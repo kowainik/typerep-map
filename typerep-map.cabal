@@ -1,0 +1,45 @@
+name:                typerep-map
+version:             0.1.0.0
+description:         Efficient implementation of data type with types as keys
+homepage:            https://github.com/vrom911/typerep-map
+bug-reports:         https://github.com/vrom911/typerep-map/issues
+license:             MIT
+license-file:        LICENSE
+author:              Veronika Romashkina
+maintainer:          vrom911@gmail.com
+copyright:           2017 Veronika Romashkina
+category:            Data Structures
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+tested-with:         GHC == 8.0.1
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Lib
+  ghc-options:         -Wall
+  build-depends:       base
+  default-language:    Haskell2010
+
+test-suite typerep-map-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , typerep-map
+  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+benchmark typerep-map-benchmark
+  type:                exitcode-stdio-1.0
+  default-language:    Haskell2010
+  ghc-options:         -Wall -Werror -O2 -threaded -rtsopts -with-rtsopts=-N
+  hs-source-dirs:      benchmark
+  main-is:             Main.hs
+  build-depends:       base
+                     , criterion
+                     , typerep-map
+
+source-repository head
+  type:                git
+  location:            https://github.com/vrom911/typerep-map.git
