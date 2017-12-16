@@ -6,6 +6,7 @@ module Data.TypeRep.Map
        , empty
        , insert
        , lookup
+       , size
        ) where
 
 import Prelude hiding (lookup)
@@ -38,3 +39,6 @@ insert val = TypeRepMap . LMap.insert (typeOf val) (unsafeCoerce val) . unMap
 -- Nothing
 lookup :: forall a . Typeable a => TypeRepMap -> Maybe a
 lookup = fmap unsafeCoerce . LMap.lookup (typeRep (Proxy :: Proxy a)) . unMap
+
+size :: TypeRepMap -> Int
+size = LMap.size . unMap
