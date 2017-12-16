@@ -5,6 +5,7 @@ module Data.TypeRep.Map
        ( TypeRepMap (..)
        , empty
        , insert
+       , keys
        , lookup
        , size
        ) where
@@ -42,3 +43,6 @@ lookup = fmap unsafeCoerce . LMap.lookup (typeRep (Proxy :: Proxy a)) . unMap
 
 size :: TypeRepMap -> Int
 size = LMap.size . unMap
+
+keys :: TypeRepMap -> [TypeRep]
+keys = LMap.keys . unMap
