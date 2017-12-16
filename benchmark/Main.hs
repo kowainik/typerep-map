@@ -8,11 +8,12 @@ import Prelude hiding (lookup)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 
-import Data.TypeRep.Map (TypeRepMap, empty, insert, lookup, size)
+import Data.TypeRep.Map (TypeRepMap, empty, insert, lookup, size, dbgShowTree)
 
 main :: IO ()
 main = do
     putStrLn $ "size: " ++ (show $ size bigMap)
+    putStrLn $ "tree:\n" ++ (dbgShowTree bigMap)
     defaultMain
         [ bench "lookup"     $ whnf (lookup :: TypeRepMap -> Maybe Char) bigMap
         , bench "insert new" $ whnf (\x -> insert x bigMap) (111 :: Int)
@@ -21,7 +22,7 @@ main = do
 
 -- TypeRepMap of 10000 elements
 bigMap :: TypeRepMap
-bigMap = buildBigMap 10000 (Proxy :: Proxy Z) empty
+bigMap = buildBigMap 15 (Proxy :: Proxy Z) empty
 
 data Z
 data S a

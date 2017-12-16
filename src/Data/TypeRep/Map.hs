@@ -7,6 +7,7 @@ module Data.TypeRep.Map
        , insert
        , lookup
        , size
+       , dbgShowTree
        ) where
 
 import Prelude hiding (lookup)
@@ -42,3 +43,6 @@ lookup = fmap unsafeCoerce . LMap.lookup (typeRep (Proxy :: Proxy a)) . unMap
 
 size :: TypeRepMap -> Int
 size = LMap.size . unMap
+
+dbgShowTree :: TypeRepMap -> String
+dbgShowTree = LMap.showTreeWith (\k _ -> show k) False True . unMap
