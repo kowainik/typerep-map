@@ -26,16 +26,15 @@ main = do
     evaluate $ rknf bigMap
     defaultMain
         [ bench "lookup"     $ nf tenLookups bigMap
-        , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (111 :: Int)
-        , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) 'b'
+        , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (proxy (111 :: Int))
+        , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (proxy 'b')
         ]
 
-tenLookups :: TypeRepMap
+tenLookups :: TypeRepMap Proxy
            -> ( Proxy (BigProxy 10), Proxy (BigProxy 20)
               , Proxy (BigProxy 30), Proxy (BigProxy 40)
               , Proxy (BigProxy 50), Proxy (BigProxy 60)
               , Proxy (BigProxy 70), Proxy (BigProxy 80)
-              -- , Proxy (BigProxy 9000), Proxy (BigProxy 10000)
               )
 tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
   where
@@ -43,19 +42,22 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
     lp = fromJust $ lookup tmap
 
 -- TypeRepMap of 10000 elements
-bigMap :: TypeRepMap
+bigMap :: TypeRepMap Proxy
 bigMap = buildBigMap 10000 (Proxy :: Proxy Z) empty
 
 data Z
 data S a
 
-buildBigMap :: forall a . Typeable a => Int -> Proxy a -> TypeRepMap -> TypeRepMap
-buildBigMap 1 x = insert 'a' . insert x
+buildBigMap :: forall a . Typeable a => Int -> Proxy a -> TypeRepMap Proxy -> TypeRepMap Proxy
+buildBigMap 1 x = insert (proxy 'a') . insert x
 buildBigMap n x = insert x . buildBigMap (n - 1) (Proxy :: Proxy (S a))
 
-rknf :: TypeRepMap -> ()
+rknf :: TypeRepMap f -> ()
 rknf = rnf . keys
 
 type family BigProxy (n :: Nat) :: * where
     BigProxy 0 = Z
     BigProxy n = S (BigProxy (n - 1))
+
+proxy :: a -> Proxy a
+proxy _ = Proxy
