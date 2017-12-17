@@ -45,6 +45,7 @@ benchmark typerep-map-benchmark
                      , criterion
                      , typerep-map
                      , deepseq
+                     , ghc-typelits-knownnat
 
 source-repository head
   type:                git
