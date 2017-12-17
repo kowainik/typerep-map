@@ -16,29 +16,36 @@ tested-with:         GHC == 8.0.1
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     Data.TypeRep.Map
   ghc-options:         -Wall
   build-depends:       base
+                     , containers
   default-language:    Haskell2010
 
 test-suite typerep-map-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is:             Spec.hs
+  main-is:             Test.hs
+  other-modules:       Test.TypeRep.Map
   build-depends:       base
                      , typerep-map
+                     , tasty
+                     , tasty-discover >= 4.1.1
+                     , tasty-hspec
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 benchmark typerep-map-benchmark
   type:                exitcode-stdio-1.0
   default-language:    Haskell2010
-  ghc-options:         -Wall -Werror -O2 -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -Werror -O2 -threaded -rtsopts -with-rtsopts=-N -freduction-depth=0
   hs-source-dirs:      benchmark
   main-is:             Main.hs
   build-depends:       base
                      , criterion
                      , typerep-map
+                     , deepseq
+                     , ghc-typelits-knownnat
 
 source-repository head
   type:                git
