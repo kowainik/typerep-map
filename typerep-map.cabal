@@ -17,9 +17,11 @@ tested-with:         GHC == 8.0.1
 library
   hs-source-dirs:      src
   exposed-modules:     Data.TypeRep.Map
+                     , Data.TypeRep.Vector
   ghc-options:         -Wall
   build-depends:       base
                      , containers
+                     , vector
   default-language:    Haskell2010
 
 test-suite typerep-map-test
