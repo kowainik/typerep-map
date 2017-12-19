@@ -52,7 +52,7 @@ buildBigMap 1 x = (TF x :)
 buildBigMap n x = (TF x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
 
 rknf :: TypeRepVector f -> ()
-rknf = rnf . fingerprints
+rknf tVect = rnf (fingerprintAs tVect, fingerprintBs tVect)
 
 prepareBenchVectorOpt :: IO ()
 prepareBenchVectorOpt = evaluate (rknf bigMap)
