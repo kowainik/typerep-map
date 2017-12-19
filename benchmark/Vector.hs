@@ -11,12 +11,15 @@
 
 module Vector
        ( benchVector
+       , prepareBenchVector
        ) where
 
 import Criterion.Main (Benchmark, bench, bgroup, nf)
 
 import Prelude hiding (lookup)
 
+import Control.Exception
+import Control.DeepSeq (rnf)
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
@@ -44,16 +47,12 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
 bigMap :: TypeRepVector (Proxy :: Nat -> *)
 bigMap = fromList $ buildBigMap 10000 (Proxy :: Proxy 0) []
 
-data Z
-data S a
-
 buildBigMap :: forall a . (Typeable a, KnownNat a) => Int -> Proxy (a :: Nat) -> [TF (Proxy :: Nat -> *)] -> [TF (Proxy :: Nat -> *)]
 buildBigMap 1 x = (TF x :)
 buildBigMap n x = (TF x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
 
--- rknf :: TypeRepMap f -> ()
--- rknf = rnf . keys
+rknf :: TypeRepVector f -> ()
+rknf = rnf . fingerprints
 
-type family BigProxy (n :: Nat) :: * where
-    BigProxy 0 = Z
-    BigProxy n = S (BigProxy (n - 1))
+prepareBenchVector :: IO ()
+prepareBenchVector = evaluate (rknf bigMap)
