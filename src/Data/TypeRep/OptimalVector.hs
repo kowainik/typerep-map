@@ -5,12 +5,11 @@
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 
-module Data.TypeRep.Vector
+module Data.TypeRep.OptimalVector
        ( TypeRepVector (..)
        , TF (..)
        , empty
@@ -23,10 +22,11 @@ module Data.TypeRep.Vector
 import Prelude hiding (lookup)
 
 import Control.Arrow ((&&&))
+import Data.Foldable (for_)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import Data.Word (Word64)
-import GHC.Base (Any)
+import GHC.Base (Any, liftM)
 import GHC.Exts (sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import Unsafe.Coerce (unsafeCoerce)
@@ -36,90 +36,78 @@ import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as Unboxed
 
-data instance Unboxed.MVector s Fingerprint = MFingerprintVector (Unboxed.MVector s Word64) (Unboxed.MVector s Word64)
-data instance Unboxed.Vector Fingerprint = FingerprintVector (Unboxed.Vector Word64) (Unboxed.Vector Word64)
+data instance Unboxed.MVector s Fingerprint = MFingerprintVectorOpt (Unboxed.MVector s Word64)
+data instance Unboxed.Vector Fingerprint = FingerprintVectorOpt (Unboxed.Vector Word64)
 
 instance Unboxed.Unbox Fingerprint
 
 instance M.MVector Unboxed.MVector Fingerprint where
     {-# INLINE basicLength  #-}
-    basicLength (MFingerprintVector x _) = M.basicLength x
+    basicLength (MFingerprintVectorOpt v) = M.basicLength v `div` 2
     {-# INLINE basicUnsafeSlice  #-}
-    basicUnsafeSlice i m (MFingerprintVector a b) =
-        MFingerprintVector (M.basicUnsafeSlice i m a) (M.basicUnsafeSlice i m b)
+    basicUnsafeSlice i n (MFingerprintVectorOpt v) =
+        MFingerprintVectorOpt $ M.basicUnsafeSlice (2 * i) (2 * n) v
     {-# INLINE basicOverlaps  #-}
-    basicOverlaps (MFingerprintVector as1 bs1) (MFingerprintVector as2 bs2) =
-        M.basicOverlaps as1 as2 || M.basicOverlaps bs1 bs2
+    basicOverlaps (MFingerprintVectorOpt v1) (MFingerprintVectorOpt v2) =
+        M.basicOverlaps v1 v2
     {-# INLINE basicUnsafeNew  #-}
-    basicUnsafeNew n_ = do
-        as <- M.basicUnsafeNew n_
-        bs <- M.basicUnsafeNew n_
-        return $ MFingerprintVector as bs
+    basicUnsafeNew n = MFingerprintVectorOpt `liftM` M.basicUnsafeNew (2 * n)
     {-# INLINE basicInitialize  #-}
-    basicInitialize (MFingerprintVector as bs) = do
-        M.basicInitialize as
-        M.basicInitialize bs
+    basicInitialize (MFingerprintVectorOpt v) = M.basicInitialize v
     {-# INLINE basicUnsafeReplicate  #-}
     basicUnsafeReplicate n_ (Fingerprint a b) = do
-        as <- M.basicUnsafeReplicate n_ a
-        bs <- M.basicUnsafeReplicate n_ b
-        return $ MFingerprintVector as bs
+        v <- M.basicUnsafeNew $ 2 * n_
+        for_ [0, 2 .. 2 * n_ - 1] $ \i -> do
+            M.basicUnsafeWrite v i a
+            M.basicUnsafeWrite v (i + 1) b
+        return $ MFingerprintVectorOpt v
     {-# INLINE basicUnsafeRead  #-}
-    basicUnsafeRead (MFingerprintVector as bs) i_ = do
-        a <- M.basicUnsafeRead as i_
-        b <- M.basicUnsafeRead bs i_
+    basicUnsafeRead (MFingerprintVectorOpt v) i = do
+        a <- M.basicUnsafeRead v (2 * i)
+        b <- M.basicUnsafeRead v (2 * i + 1)
         return (Fingerprint a b)
     {-# INLINE basicUnsafeWrite  #-}
-    basicUnsafeWrite (MFingerprintVector as bs) i_ (Fingerprint a b) = do
-        M.basicUnsafeWrite as i_ a
-        M.basicUnsafeWrite bs i_ b
+    basicUnsafeWrite (MFingerprintVectorOpt v) i (Fingerprint a b) = do
+        M.basicUnsafeWrite v (2 * i) a
+        M.basicUnsafeWrite v (2 * i + 1) b
     {-# INLINE basicClear  #-}
-    basicClear (MFingerprintVector as bs) = do
-        M.basicClear as
-        M.basicClear bs
+    basicClear (MFingerprintVectorOpt v) = M.basicClear v
     {-# INLINE basicSet  #-}
-    basicSet (MFingerprintVector as bs) (Fingerprint a b) = do
-        M.basicSet as a
-        M.basicSet bs b
+    basicSet (MFingerprintVectorOpt v) (Fingerprint a b) = do
+        let n = M.basicLength v
+        for_ [0, 2 .. n - 1] $ \i -> do
+            M.basicUnsafeWrite v i a
+            M.basicUnsafeWrite v (i + 1) b
     {-# INLINE basicUnsafeCopy  #-}
-    basicUnsafeCopy (MFingerprintVector as1 bs1) (MFingerprintVector as2 bs2) = do
-        M.basicUnsafeCopy as1 as2
-        M.basicUnsafeCopy bs1 bs2
+    basicUnsafeCopy (MFingerprintVectorOpt v1) (MFingerprintVectorOpt v2) =
+        M.basicUnsafeCopy v1 v2
     {-# INLINE basicUnsafeMove  #-}
-    basicUnsafeMove (MFingerprintVector as1 bs1) (MFingerprintVector as2 bs2) = do
-        M.basicUnsafeMove as1 as2
-        M.basicUnsafeMove bs1 bs2
+    basicUnsafeMove (MFingerprintVectorOpt v1) (MFingerprintVectorOpt v2) =
+        M.basicUnsafeMove v1 v2
     {-# INLINE basicUnsafeGrow  #-}
-    basicUnsafeGrow (MFingerprintVector as bs) m_ = do
-        as' <- M.basicUnsafeGrow as m_
-        bs' <- M.basicUnsafeGrow bs m_
-        return $ MFingerprintVector as' bs'
+    basicUnsafeGrow (MFingerprintVectorOpt v) m_ =
+        MFingerprintVectorOpt <$> M.basicUnsafeGrow v (2 * m_)
 
 instance G.Vector Unboxed.Vector Fingerprint where
     {-# INLINE basicUnsafeFreeze  #-}
-    basicUnsafeFreeze (MFingerprintVector as bs) = do
-        as' <- G.basicUnsafeFreeze as
-        bs' <- G.basicUnsafeFreeze bs
-        return $ FingerprintVector as' bs'
+    basicUnsafeFreeze (MFingerprintVectorOpt v) =
+        FingerprintVectorOpt <$> G.basicUnsafeFreeze v
     {-# INLINE basicUnsafeThaw  #-}
-    basicUnsafeThaw (FingerprintVector as bs) = do
-        as' <- G.basicUnsafeThaw as
-        bs' <- G.basicUnsafeThaw bs
-        return $ MFingerprintVector as' bs'
+    basicUnsafeThaw (FingerprintVectorOpt v) = do
+        MFingerprintVectorOpt <$> G.basicUnsafeThaw v
     {-# INLINE basicLength  #-}
-    basicLength (FingerprintVector x _) = G.basicLength x
+    basicLength (FingerprintVectorOpt v) = G.basicLength v `div` 2
     {-# INLINE basicUnsafeSlice  #-}
-    basicUnsafeSlice i_ m_ (FingerprintVector as bs) =
-        FingerprintVector (G.basicUnsafeSlice i_ m_ as) (G.basicUnsafeSlice i_ m_ bs)
+    basicUnsafeSlice i_ m_ (FingerprintVectorOpt v) =
+        FingerprintVectorOpt (G.basicUnsafeSlice (2 * i_) (2 * m_) v)
     {-# INLINE basicUnsafeIndexM  #-}
-    basicUnsafeIndexM (FingerprintVector as bs) i_ = do
-        a <- G.basicUnsafeIndexM as i_
-        b <- G.basicUnsafeIndexM bs i_
-        return (Fingerprint a b)
+    basicUnsafeIndexM (FingerprintVectorOpt v) i_ = do
+            a <- G.basicUnsafeIndexM v (2 * i_)
+            b <- G.basicUnsafeIndexM v (2 * i_ + 1)
+            return (Fingerprint a b)
     {-# INLINE basicUnsafeCopy  #-}
-    basicUnsafeCopy (MFingerprintVector as1 bs1) (FingerprintVector as2 bs2) = do
-        G.basicUnsafeCopy as1 as2
-        G.basicUnsafeCopy bs1 bs2
+    basicUnsafeCopy (MFingerprintVectorOpt v1) (FingerprintVectorOpt v2) =
+        G.basicUnsafeCopy v1 v2
     {-# INLINE elemseq  #-}
     elemseq _ (Fingerprint a b)
         = G.elemseq (undefined :: Unboxed.Vector a) a
@@ -144,7 +132,7 @@ insert = undefined
 -- | Looks up the value at the type.
 -- >>> let x = lookup $ insert (11 :: Int) empty
 -- >>> x :: Maybe Int
--- Just 11a Ty
+-- Just 11
 -- >>> x :: Maybe ()
 -- Nothing
 lookup :: forall a f . Typeable a => TypeRepVector f -> Maybe (f a)
@@ -171,6 +159,7 @@ fromList tfs = TypeRepVect (Unboxed.fromList fps) (V.fromList ans)
 
     an :: TF f -> Any
     an (TF x) = unsafeCoerce x
+
 
 -- | Returns the index is found.
 binarySearch :: Fingerprint -> Unboxed.Vector Fingerprint -> Maybe Int

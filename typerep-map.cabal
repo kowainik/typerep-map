@@ -18,6 +18,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Data.TypeRep.Map
                      , Data.TypeRep.Vector
+                     , Data.TypeRep.OptimalVector
   ghc-options:         -Wall
   build-depends:       base
                      , containers
@@ -29,6 +30,8 @@ test-suite typerep-map-test
   hs-source-dirs:      test
   main-is:             Test.hs
   other-modules:       Test.TypeRep.Map
+                     , Test.TypeRep.Vector
+                     , Test.TypeRep.VectorOpt
   build-depends:       base
                      , typerep-map
                      , tasty
@@ -43,6 +46,9 @@ benchmark typerep-map-benchmark
   ghc-options:         -Wall -Werror -O2 -threaded -rtsopts -with-rtsopts=-N -freduction-depth=0
   hs-source-dirs:      benchmark
   main-is:             Main.hs
+  other-modules:       Map
+                     , Vector
+                     , OptimalVector
   build-depends:       base
                      , criterion
                      , typerep-map
