@@ -38,86 +38,10 @@ import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as Unboxed
 
-data instance Unboxed.MVector s Fingerprint = MFingerprintVectorOpt (Unboxed.MVector s Word64)
-data instance Unboxed.Vector Fingerprint = FingerprintVectorOpt (Unboxed.Vector Word64)
-
-instance Unboxed.Unbox Fingerprint
-
-instance M.MVector Unboxed.MVector Fingerprint where
-    {-# INLINE basicLength  #-}
-    basicLength (MFingerprintVectorOpt v) = M.basicLength v `div` 2
-    {-# INLINE basicUnsafeSlice  #-}
-    basicUnsafeSlice i n (MFingerprintVectorOpt v) =
-        MFingerprintVectorOpt $ M.basicUnsafeSlice (2 * i) (2 * n) v
-    {-# INLINE basicOverlaps  #-}
-    basicOverlaps (MFingerprintVectorOpt v1) (MFingerprintVectorOpt v2) =
-        M.basicOverlaps v1 v2
-    {-# INLINE basicUnsafeNew  #-}
-    basicUnsafeNew n = MFingerprintVectorOpt `liftM` M.basicUnsafeNew (2 * n)
-    {-# INLINE basicInitialize  #-}
-    basicInitialize (MFingerprintVectorOpt v) = M.basicInitialize v
-    {-# INLINE basicUnsafeReplicate  #-}
-    basicUnsafeReplicate n_ (Fingerprint a b) = do
-        v <- M.basicUnsafeNew $ 2 * n_
-        for_ [0, 2 .. 2 * n_ - 1] $ \i -> do
-            M.basicUnsafeWrite v i a
-            M.basicUnsafeWrite v (i + 1) b
-        return $ MFingerprintVectorOpt v
-    {-# INLINE basicUnsafeRead  #-}
-    basicUnsafeRead (MFingerprintVectorOpt v) i = do
-        a <- M.basicUnsafeRead v (2 * i)
-        b <- M.basicUnsafeRead v (2 * i + 1)
-        return (Fingerprint a b)
-    {-# INLINE basicUnsafeWrite  #-}
-    basicUnsafeWrite (MFingerprintVectorOpt v) i (Fingerprint a b) = do
-        M.basicUnsafeWrite v (2 * i) a
-        M.basicUnsafeWrite v (2 * i + 1) b
-    {-# INLINE basicClear  #-}
-    basicClear (MFingerprintVectorOpt v) = M.basicClear v
-    {-# INLINE basicSet  #-}
-    basicSet (MFingerprintVectorOpt v) (Fingerprint a b) = do
-        let n = M.basicLength v
-        for_ [0, 2 .. n - 1] $ \i -> do
-            M.basicUnsafeWrite v i a
-            M.basicUnsafeWrite v (i + 1) b
-    {-# INLINE basicUnsafeCopy  #-}
-    basicUnsafeCopy (MFingerprintVectorOpt v1) (MFingerprintVectorOpt v2) =
-        M.basicUnsafeCopy v1 v2
-    {-# INLINE basicUnsafeMove  #-}
-    basicUnsafeMove (MFingerprintVectorOpt v1) (MFingerprintVectorOpt v2) =
-        M.basicUnsafeMove v1 v2
-    {-# INLINE basicUnsafeGrow  #-}
-    basicUnsafeGrow (MFingerprintVectorOpt v) m_ =
-        MFingerprintVectorOpt <$> M.basicUnsafeGrow v (2 * m_)
-
-instance G.Vector Unboxed.Vector Fingerprint where
-    {-# INLINE basicUnsafeFreeze  #-}
-    basicUnsafeFreeze (MFingerprintVectorOpt v) =
-        FingerprintVectorOpt <$> G.basicUnsafeFreeze v
-    {-# INLINE basicUnsafeThaw  #-}
-    basicUnsafeThaw (FingerprintVectorOpt v) = do
-        MFingerprintVectorOpt <$> G.basicUnsafeThaw v
-    {-# INLINE basicLength  #-}
-    basicLength (FingerprintVectorOpt v) = G.basicLength v `div` 2
-    {-# INLINE basicUnsafeSlice  #-}
-    basicUnsafeSlice i_ m_ (FingerprintVectorOpt v) =
-        FingerprintVectorOpt (G.basicUnsafeSlice (2 * i_) (2 * m_) v)
-    {-# INLINE basicUnsafeIndexM  #-}
-    basicUnsafeIndexM (FingerprintVectorOpt v) i_ = do
-            a <- G.basicUnsafeIndexM v (2 * i_)
-            b <- G.basicUnsafeIndexM v (2 * i_ + 1)
-            return (Fingerprint a b)
-    {-# INLINE basicUnsafeCopy  #-}
-    basicUnsafeCopy (MFingerprintVectorOpt v1) (FingerprintVectorOpt v2) =
-        G.basicUnsafeCopy v1 v2
-    {-# INLINE elemseq  #-}
-    elemseq _ (Fingerprint a b)
-        = G.elemseq (undefined :: Unboxed.Vector a) a
-        . G.elemseq (undefined :: Unboxed.Vector b) b
-
 data TypeRepVector f = TypeRepVect
-    { fingerprints :: Unboxed.Vector Fingerprint
-    , anys         :: V.Vector Any
+    { fingerprintAs :: Unboxed.Vector Word64
+    , fingerprintBs :: Unboxed.Vector Word64
+    , anys          :: V.Vector Any
     }
 
 fromAny :: Any -> f a
@@ -125,7 +49,7 @@ fromAny = unsafeCoerce
 
 -- | Empty structure.
 empty :: TypeRepVector f
-empty = TypeRepVect mempty mempty
+empty = TypeRepVect mempty mempty mempty
 
 -- | Inserts the value with its type as a key.
 insert :: forall a f . Typeable a => a -> TypeRepVector f -> TypeRepVector f
@@ -139,11 +63,11 @@ insert = undefined
 -- Nothing
 lookup :: forall a f . Typeable a => TypeRepVector f -> Maybe (f a)
 lookup tVect =  fromAny . (anys tVect V.!)
-            <$> binarySearch (typeRepFingerprint (typeRep (Proxy :: Proxy a))) (fingerprints tVect)
+            <$> binarySearch (typeRepFingerprint (typeRep (Proxy :: Proxy a))) (fingerprintAs tVect) (fingerprintBs tVect)
 
 -- | Returns the size of the 'TypeRepVect'.
 size :: TypeRepVector f -> Int
-size = Unboxed.length . fingerprints
+size = Unboxed.length . fingerprintAs
 
 data TF f where
   TF :: Typeable a => f a -> TF f
@@ -152,8 +76,9 @@ fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
 
 fromList :: forall f . [TF f] -> TypeRepVector f
-fromList tfs = TypeRepVect (Unboxed.fromList fps) (V.fromList ans)
+fromList tfs = TypeRepVect (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (V.fromList ans)
   where
+    (fpAs, fpBs) = unzip $ fmap (\(Fingerprint a b) -> (a, b)) fps
     (fps, ans) = unzip $ sortWith fst $ map (fp &&& an) tfs
 
     fp :: TF f -> Fingerprint
@@ -163,19 +88,20 @@ fromList tfs = TypeRepVect (Unboxed.fromList fps) (V.fromList ans)
     an (TF x) = unsafeCoerce x
 
 -- | Returns the index is found.
-binarySearch :: Fingerprint -> Unboxed.Vector Fingerprint -> Maybe Int
-binarySearch fp fpVect =
+binarySearch :: Fingerprint -> Unboxed.Vector Word64 -> Unboxed.Vector Word64 -> Maybe Int
+binarySearch (Fingerprint a _) fpAs _ =
     let
-      !(I# len) = Unboxed.length fpVect
+      !(I# len) = Unboxed.length fpAs
       ind = I# (binSearchHelp (-1#) len)
     in
-      if fp == (fpVect Unboxed.! ind) then Just ind else Nothing
+      -- FIXME: Check second component!
+      if a == (fpAs Unboxed.! ind) then Just ind else Nothing
   where
     binSearchHelp :: Int# -> Int# -> Int#
     binSearchHelp l r = case l <# (r -# 1#) of
         0# -> r
         _ ->
             let m = uncheckedIShiftRA# (l +# r) 1# in
-            if Unboxed.unsafeIndex fpVect (I# m) < fp
+            if Unboxed.unsafeIndex fpAs (I# m) < a
                 then binSearchHelp m r
                 else binSearchHelp l m
