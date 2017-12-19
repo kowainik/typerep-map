@@ -23,6 +23,7 @@ library
   build-depends:       base
                      , containers
                      , vector
+                     , ghc-prim
   default-language:    Haskell2010
 
 test-suite typerep-map-test

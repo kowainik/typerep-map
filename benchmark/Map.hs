@@ -12,19 +12,21 @@
 
 module Map
        ( benchMap
+       , prepareBenchMap
        ) where
 
 import Criterion.Main (Benchmark, bench, bgroup, nf)
 
 import Prelude hiding (lookup)
 
---import Control.DeepSeq (rnf)
+import Control.Exception
+import Control.DeepSeq (rnf)
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 import GHC.TypeLits
 
-import Data.TypeRep.Map (TypeRepMap (..), empty, insert, lookup)
+import Data.TypeRep.Map (TypeRepMap (..), empty, insert, lookup, keys)
 
 benchMap :: Benchmark
 benchMap = bgroup "map"
@@ -46,16 +48,12 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
 bigMap :: TypeRepMap (Proxy :: Nat -> *)
 bigMap = buildBigMap 10000 (Proxy :: Proxy 0) empty
 
-data Z
-data S a
-
 buildBigMap :: forall a . (Typeable a, KnownNat a) => Int -> Proxy (a :: Nat) -> TypeRepMap (Proxy :: Nat -> *) -> TypeRepMap (Proxy :: Nat -> *)
 buildBigMap 1 x = insert x
 buildBigMap n x = insert x . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
 
---rknf :: TypeRepMap f -> ()
---rknf = rnf . keys
+rknf :: TypeRepMap f -> ()
+rknf = rnf . keys
 
-type family BigProxy (n :: Nat) :: * where
-    BigProxy 0 = Z
-    BigProxy n = S (BigProxy (n - 1))
+prepareBenchMap :: IO ()
+prepareBenchMap = evaluate (rknf bigMap)
