@@ -3,15 +3,16 @@ module Main where
 import Criterion.Main (defaultMain)
 
 import Map (benchMap, prepareBenchMap)
--- import OptimalVector (benchVectorOpt)
-import Vector (benchVector, prepareBenchVector)
+import OptimalVector (benchVectorOpt, prepareBenchVectorOpt)
+--import Vector (benchVector, prepareBenchVector)
 
 main :: IO ()
 main = do
   prepareBenchMap
-  prepareBenchVector
+  --prepareBenchVector
+  prepareBenchVectorOpt
   defaultMain
     [ benchMap
-    , benchVector
---    , benchVectorOpt
+   -- , benchVector
+    , benchVectorOpt
     ]

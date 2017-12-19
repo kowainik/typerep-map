@@ -7,6 +7,7 @@
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE MagicHash, BangPatterns #-}
 
 
 module Data.TypeRep.OptimalVector
@@ -26,10 +27,11 @@ import Data.Foldable (for_)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import Data.Word (Word64)
-import GHC.Base (Any, liftM)
+import GHC.Base hiding (empty)
 import GHC.Exts (sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import Unsafe.Coerce (unsafeCoerce)
+import GHC.Prim
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
@@ -160,18 +162,20 @@ fromList tfs = TypeRepVect (Unboxed.fromList fps) (V.fromList ans)
     an :: TF f -> Any
     an (TF x) = unsafeCoerce x
 
-
 -- | Returns the index is found.
 binarySearch :: Fingerprint -> Unboxed.Vector Fingerprint -> Maybe Int
 binarySearch fp fpVect =
-    let ind = binSearchHelp (-1) (Unboxed.length fpVect) in
-    if fp == (fpVect Unboxed.! ind) then Just ind else Nothing
+    let
+      !(I# len) = Unboxed.length fpVect
+      ind = I# (binSearchHelp (-1#) len)
+    in
+      if fp == (fpVect Unboxed.! ind) then Just ind else Nothing
   where
-    binSearchHelp :: Int -> Int -> Int
-    binSearchHelp l r = if l < r - 1
-        then (
-            let m = (l + r) `div` 2 in
-            if fpVect Unboxed.! m < fp
+    binSearchHelp :: Int# -> Int# -> Int#
+    binSearchHelp l r = case l <# (r -# 1#) of
+        0# -> r
+        _ ->
+            let m = uncheckedIShiftRA# (l +# r) 1# in
+            if Unboxed.unsafeIndex fpVect (I# m) < fp
                 then binSearchHelp m r
-                else binSearchHelp l m )
-        else r
+                else binSearchHelp l m
