@@ -1,13 +1,14 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE ExplicitForAll        #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE MagicHash, BangPatterns #-}
 
 
 module Data.TypeRep.OptimalVector
@@ -23,7 +24,6 @@ module Data.TypeRep.OptimalVector
 import Prelude hiding (lookup)
 
 import Control.Arrow ((&&&))
-import Data.Foldable (for_)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import Data.Word (Word64)
@@ -31,11 +31,8 @@ import GHC.Base hiding (empty)
 import GHC.Exts (sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import Unsafe.Coerce (unsafeCoerce)
-import GHC.Prim
 
 import qualified Data.Vector as V
-import qualified Data.Vector.Generic as G
-import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as Unboxed
 
 data TypeRepVector f = TypeRepVect
@@ -89,19 +86,27 @@ fromList tfs = TypeRepVect (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (V.fr
 
 -- | Returns the index is found.
 binarySearch :: Fingerprint -> Unboxed.Vector Word64 -> Unboxed.Vector Word64 -> Maybe Int
-binarySearch (Fingerprint a _) fpAs _ =
+binarySearch (Fingerprint a b) fpAs fpBs =
     let
       !(I# len) = Unboxed.length fpAs
       ind = I# (binSearchHelp (-1#) len)
     in
       -- FIXME: Check second component!
-      if a == (fpAs Unboxed.! ind) then Just ind else Nothing
+      if a == (fpAs Unboxed.! ind) && (b == (fpBs Unboxed.! ind))
+          then Just ind
+          else checkfpBs (ind + 1) (I# len)
   where
     binSearchHelp :: Int# -> Int# -> Int#
     binSearchHelp l r = case l <# (r -# 1#) of
         0# -> r
-        _ ->
+        _  ->
             let m = uncheckedIShiftRA# (l +# r) 1# in
             if Unboxed.unsafeIndex fpAs (I# m) < a
                 then binSearchHelp m r
                 else binSearchHelp l m
+
+    checkfpBs :: Int -> Int -> Maybe Int
+    checkfpBs i len
+        | i >= len = Nothing
+        | a == (fpAs Unboxed.! i) && b == (fpBs Unboxed.! i) = Just i
+        | otherwise = checkfpBs (i + 1) len
