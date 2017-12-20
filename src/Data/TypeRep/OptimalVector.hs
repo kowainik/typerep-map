@@ -91,10 +91,7 @@ binarySearch (Fingerprint a b) fpAs fpBs =
       !(I# len) = Unboxed.length fpAs
       ind = I# (binSearchHelp (-1#) len)
     in
-      -- FIXME: Check second component!
-      if a == (fpAs Unboxed.! ind) && (b == (fpBs Unboxed.! ind))
-          then Just ind
-          else checkfpBs (ind + 1) (I# len)
+      checkfpBs ind (I# len)
   where
     binSearchHelp :: Int# -> Int# -> Int#
     binSearchHelp l r = case l <# (r -# 1#) of
@@ -107,6 +104,6 @@ binarySearch (Fingerprint a b) fpAs fpBs =
 
     checkfpBs :: Int -> Int -> Maybe Int
     checkfpBs i len
-        | i >= len = Nothing
-        | a == (fpAs Unboxed.! i) && b == (fpBs Unboxed.! i) = Just i
+        | i >= len || a /= Unboxed.unsafeIndex fpAs i = Nothing
+        | b == Unboxed.unsafeIndex fpBs i = Just i
         | otherwise = checkfpBs (i + 1) len
