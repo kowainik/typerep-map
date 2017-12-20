@@ -31,6 +31,7 @@ import GHC.Base hiding (empty)
 import GHC.Exts (sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import Unsafe.Coerce (unsafeCoerce)
+import Debug.Trace
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as Unboxed
@@ -89,9 +90,18 @@ binarySearch :: Fingerprint -> Unboxed.Vector Word64 -> Unboxed.Vector Word64 ->
 binarySearch (Fingerprint a b) fpAs fpBs =
     let
       !(I# len) = Unboxed.length fpAs
-      ind = I# (binSearchHelp (-1#) len)
+      checkfpBs :: Int# -> Maybe Int
+      checkfpBs i =
+        case i <# len of
+          0# -> Nothing
+          _ ->
+            if a /= Unboxed.unsafeIndex fpAs (I# i)
+            then Nothing
+            else if b == Unboxed.unsafeIndex fpBs (I# i)
+                 then Just (I# i)
+                 else checkfpBs (i +# 1#)
     in
-      checkfpBs ind (I# len)
+      inline (checkfpBs (binSearchHelp (-1#) len))
   where
     binSearchHelp :: Int# -> Int# -> Int#
     binSearchHelp l r = case l <# (r -# 1#) of
@@ -102,8 +112,3 @@ binarySearch (Fingerprint a b) fpAs fpBs =
                 then binSearchHelp m r
                 else binSearchHelp l m
 
-    checkfpBs :: Int -> Int -> Maybe Int
-    checkfpBs i len
-        | i >= len || a /= Unboxed.unsafeIndex fpAs i = Nothing
-        | b == Unboxed.unsafeIndex fpBs i = Just i
-        | otherwise = checkfpBs (i + 1) len
