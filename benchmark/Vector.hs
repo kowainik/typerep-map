@@ -35,8 +35,8 @@ benchVector = bgroup "vector"
     ]
 
 tenLookups :: TypeRepVector (Proxy :: Nat -> *)
-           -> ( Proxy 10, Proxy 20, Proxy 30, Proxy 40
-              , Proxy 50, Proxy 60, Proxy 70, Proxy 80
+           -> ( Proxy 1000, Proxy 2000, Proxy 3000, Proxy 4000
+              , Proxy 5000, Proxy 6000, Proxy 7000, Proxy 8000
               )
 tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
   where

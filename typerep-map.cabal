@@ -24,6 +24,7 @@ library
                      , containers
                      , vector
                      , ghc-prim
+                     , primitive
   default-language:    Haskell2010
 
 test-suite typerep-map-test

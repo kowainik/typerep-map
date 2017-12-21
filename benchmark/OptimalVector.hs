@@ -18,8 +18,6 @@ import Criterion.Main (Benchmark, bench, bgroup, nf)
 
 import Prelude hiding (lookup)
 
-import Control.Exception
-import Control.DeepSeq (rnf)
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
@@ -30,13 +28,13 @@ import Data.TypeRep.OptimalVector
 benchVectorOpt :: Benchmark
 benchVectorOpt = bgroup "vector optimal"
    [ bench "lookup"     $ nf tenLookups bigMap
-   -- , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
-   -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
+   -- , bench "insert new" $ whnf (\x -> insert x bigMap) (Proxy :: Proxy 9999999999)
+   -- , bench "update old" $ whnf (\x -> insert x bigMap) (Proxy :: Proxy 1)
    ]
 
 tenLookups :: TypeRepVector (Proxy :: Nat -> *)
-           -> ( Proxy 10, Proxy 20, Proxy 30, Proxy 40
-              , Proxy 50, Proxy 60, Proxy 70, Proxy 80
+           -> ( Proxy 1000, Proxy 2000, Proxy 3000, Proxy 4000
+              , Proxy 5000, Proxy 6000, Proxy 7000, Proxy 8000
               )
 tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
   where
@@ -51,8 +49,5 @@ buildBigMap :: forall a . (Typeable a, KnownNat a) => Int -> Proxy (a :: Nat) ->
 buildBigMap 1 x = (TF x :)
 buildBigMap n x = (TF x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
 
-rknf :: TypeRepVector f -> ()
-rknf tVect = rnf (fingerprintAs tVect, fingerprintBs tVect)
-
 prepareBenchVectorOpt :: IO ()
-prepareBenchVectorOpt = evaluate (rknf bigMap)
+prepareBenchVectorOpt = return ()
