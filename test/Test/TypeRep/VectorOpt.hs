@@ -6,7 +6,7 @@ import Data.Functor.Identity (Identity (..))
 
 import Test.Tasty.Hspec
 
-import Data.TypeRep.OptimalVector
+import Data.TypeRep.Map (TF (..), fromList, lookup)
 
 -- Simple test for 'lookup', 'insert' and 'size' functions.
 insertLookup :: Spec

@@ -6,7 +6,7 @@ import Data.Functor.Identity (Identity (..))
 
 import Test.Tasty.Hspec
 
-import Data.TypeRep.Map
+import Data.TypeRep.CMap
 
 -- Simple test for 'lookup', 'insert' and 'size' functions.
 spec_insertLookup :: Spec
