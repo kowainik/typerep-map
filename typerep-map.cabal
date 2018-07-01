@@ -18,9 +18,10 @@ tested-with:         GHC == 8.0.2
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.TypeRep.Map
-                     , Data.TypeRep.Vector
-                     , Data.TypeRep.OptimalVector
+  exposed-modules:     Data.TypeRep.CMap
+                       Data.TypeRep.Map
+                       Data.TypeRep.Vector
+
   ghc-options:         -Wall
   build-depends:       base
                      , containers
@@ -41,13 +42,13 @@ test-suite typerep-map-test
                      , tasty-discover >= 4.1.1
                      , tasty-hspec
   build-tool-depends:  tasty-discover:tasty-discover
-  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 benchmark typerep-map-benchmark
   type:                exitcode-stdio-1.0
   default-language:    Haskell2010
-  ghc-options:         -Wall -Werror -O2 -threaded -rtsopts -with-rtsopts=-N -freduction-depth=0
+  ghc-options:         -Wall -O2 -threaded -rtsopts -with-rtsopts=-N -freduction-depth=0
   hs-source-dirs:      benchmark
   main-is:             Main.hs
   other-modules:       Map

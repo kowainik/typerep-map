@@ -49,7 +49,7 @@ matrix:
         - cabal-install-head
 
   - ghc: 8.4.3
-    env: STACK_YAML="$HOME/build/vrom911/typerep-map/stack.yaml"
+    env: STACK_YAML="$HOME/build/kowainik/typerep-map/stack.yaml"
     os: linux
     addons:
       apt:
@@ -64,6 +64,7 @@ install:
       cabal new-update
       cabal new-build --enable-tests --enable-benchmarks
     else
+      echo "$TRAVIS_BUILD_DIR"
       mkdir -p ~/.local/bin
       export PATH="$HOME/.local/bin:$PATH"
       travis_retry curl -L 'https://www.stackage.org/stack/linux-x86_64' | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'

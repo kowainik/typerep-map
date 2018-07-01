@@ -26,7 +26,7 @@ import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 import GHC.TypeLits
 
-import Data.TypeRep.Map (TypeRepMap (..), empty, insert, keys, lookup)
+import Data.TypeRep.CMap (TypeRepMap (..), empty, insert, keys, lookup)
 
 benchMap :: Benchmark
 benchMap = bgroup "map"
