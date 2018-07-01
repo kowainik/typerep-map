@@ -1,16 +1,12 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-# LANGUAGE ExplicitForAll        #-}
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE MagicHash, BangPatterns #-}
-
 
 module Data.TypeRep.Vector
        ( TypeRepVector (..)
@@ -32,8 +28,6 @@ import GHC.Base hiding (empty)
 import GHC.Exts (sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import Unsafe.Coerce (unsafeCoerce)
-import Control.Monad.ST
-import GHC.Prim
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G

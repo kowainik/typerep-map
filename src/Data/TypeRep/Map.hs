@@ -1,11 +1,9 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE MagicHash           #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE BangPatterns   #-}
+{-# LANGUAGE GADTs          #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MagicHash      #-}
+{-# LANGUAGE PolyKinds      #-}
+{-# LANGUAGE TypeFamilies   #-}
 
 module Data.TypeRep.Map
        ( -- * Map type
