@@ -1,7 +1,5 @@
-{-# LANGUAGE ExplicitForAll      #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PolyKinds      #-}
 
 module Data.TypeRep.CMap
        ( TypeRepMap (..)
