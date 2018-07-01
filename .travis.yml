@@ -1,28 +1,85 @@
-# Use new container infrastructure to enable caching
-sudo: false
+sudo: true
+language: generic
 
-# Choose a lightweight base image; we provide our own build tools.
-language: c
+git:
+  depth: 5
 
-# GHC depends on GMP. You can add other dependencies here as well.
-addons:
-  apt:
-    packages:
-    - libgmp-dev
-
-before_install:
-# Download and unpack the stack executable
-- mkdir -p ~/.local/bin
-- export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-
-# This line does all of the work: installs GHC if necessary, builds the
-# library, executables, and test suites, and runs the test suites.
-# `--no-terminal works` around some quirks in Travis's terminal implementation.
-script: stack --no-terminal --install-ghc test
-
-# Caching so the next build will be fast too.
 cache:
   directories:
-  - $HOME/.stack
-  - $HOME/build/vrom911/typerep-map/.stack-work
+  - "$HOME/.cabal"
+  - "$HOME/.ghc"
+  - "$HOME/.stack"
+  - ".stack-work"
+
+matrix:
+
+  include:
+
+  - ghc: 8.0.2
+    env: GHCVER='8.0.2' CABALVER='head'
+    os: linux
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-8.0.2
+        - cabal-install-head
+
+  - ghc: 8.2.2
+    env: GHCVER='8.2.2' CABALVER='head'
+    os: linux
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-8.2.2
+        - cabal-install-head
+
+  - ghc: 8.4.3
+    env: GHCVER='8.4.3' CABALVER='head'
+    os: linux
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-8.4.3
+        - cabal-install-head
+
+  - ghc: 8.4.3
+    env: STACK_YAML="$HOME/build/vrom911/typerep-map/stack.yaml"
+    os: linux
+    addons:
+      apt:
+        packages:
+        - libgmp-dev
+
+install:
+  - |
+    if [ -z "$STACK_YAML" ]; then
+      export PATH="/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH"
+      echo $PATH
+      cabal new-update
+      cabal new-build --enable-tests --enable-benchmarks
+    else
+      mkdir -p ~/.local/bin
+      export PATH="$HOME/.local/bin:$PATH"
+      travis_retry curl -L 'https://www.stackage.org/stack/linux-x86_64' | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+      stack --version
+      stack setup --no-terminal --install-cabal 2.0.1.0
+      stack ghc -- --version
+      stack build --only-dependencies --no-terminal
+    fi
+
+script:
+  - |
+    if [ -z "$STACK_YAML" ]; then
+      cabal new-test
+    else
+      stack build --test --bench --no-terminal
+    fi
+
+notifications:
+  email: false
