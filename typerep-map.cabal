@@ -31,10 +31,12 @@ library
 library typerep-map-internal
   hs-source-dirs:      src
   exposed-modules:     Data.TypeRep.CMap
+                       Data.TypeRep.CacheMap
                        Data.TypeRep.Vector
   ghc-options:         -Wall
   build-depends:       base
                      , containers
+                     , ghc-prim
                      , vector
   default-extensions:  OverloadedStrings
                        RecordWildCards
@@ -67,6 +69,7 @@ benchmark typerep-map-benchmark
   hs-source-dirs:      benchmark
   main-is:             Main.hs
   other-modules:       Map
+                     , CacheMap
                      , Vector
                      , OptimalVector
   build-depends:       base
