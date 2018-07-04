@@ -27,10 +27,10 @@ import Data.Kind (Type)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import Data.Word (Word64)
-import GHC.Base (Any, Int (..), Int#, uncheckedIShiftRA#, (*#), (+#), (-#), (<#), (==#))
+import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
-import GHC.Prim
+import GHC.Prim (eqWord#, ltWord#)
 import GHC.Word (Word64 (..))
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -82,11 +82,11 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
         _  -> let !(W64# valA) = Unboxed.unsafeIndex fpAs (I# i) in case a `ltWord#` valA of
             0#  -> case a `eqWord#` valA of
                 0# -> go (2# *# i +# 2#)
-                _ -> let !(W64# valB) = Unboxed.unsafeIndex fpBs (I# i) in case b `ltWord#` valB of
-                    0# -> case b `eqWord#` valB of
+                _ -> let !(W64# valB) = Unboxed.unsafeIndex fpBs (I# i) in case b `eqWord#` valB of
+                    0# -> case b `ltWord#` valB of
                         0# -> go (2# *# i +# 2#)
-                        _  -> Just (I# i)
-                    _ -> go (2# *# i +# 1#)
+                        _  -> go (2# *# i +# 1#)
+                    _ -> Just (I# i)
             _ -> go (2# *# i +# 1#)
 
     len :: Int#
