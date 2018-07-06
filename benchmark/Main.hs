@@ -3,7 +3,7 @@ module Main where
 import Criterion.Main (defaultMain)
 
 import CacheMap (benchCacheMap, prepareBenchCacheMap)
-import Map (benchMap, prepareBenchMap)
+import CMap (benchMap, prepareBenchMap)
 import OptimalVector (benchVectorOpt, prepareBenchVectorOpt)
 --import Vector (benchVector, prepareBenchVector)
 

@@ -5,6 +5,8 @@
 {-# LANGUAGE PolyKinds      #-}
 {-# LANGUAGE TypeFamilies   #-}
 
+-- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
+
 module Data.TypeRep.CacheMap
        ( -- * Map type
          TypeRepMap (..)

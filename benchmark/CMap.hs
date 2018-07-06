@@ -8,7 +8,7 @@
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
-module Map
+module CMap
        ( benchMap
        , prepareBenchMap
        ) where

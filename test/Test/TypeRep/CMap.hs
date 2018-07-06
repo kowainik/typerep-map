@@ -1,4 +1,4 @@
-module Test.TypeRep.Map where
+module Test.TypeRep.CMap where
 
 import Prelude hiding (lookup)
 

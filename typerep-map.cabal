@@ -21,7 +21,7 @@ library
   exposed-modules:     Data.TypeRep.Map
   ghc-options:         -Wall
   build-depends:       base
-                     , vector
+                     , typerep-map-internal -any
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables
@@ -29,9 +29,10 @@ library
   default-language:    Haskell2010
 
 library typerep-map-internal
-  hs-source-dirs:      src
+  hs-source-dirs:      internal
   exposed-modules:     Data.TypeRep.CMap
                        Data.TypeRep.CacheMap
+                       Data.TypeRep.OptimalVector
                        Data.TypeRep.Vector
   ghc-options:         -Wall
   build-depends:       base
@@ -49,7 +50,8 @@ test-suite typerep-map-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Test.hs
-  other-modules:       Test.TypeRep.Map
+  other-modules:       Test.TypeRep.CMap
+                     , Test.TypeRep.CacheMap
                      , Test.TypeRep.Vector
                      , Test.TypeRep.VectorOpt
   build-depends:       base
@@ -68,7 +70,7 @@ benchmark typerep-map-benchmark
   ghc-options:         -Wall -O2 -threaded -rtsopts -with-rtsopts=-N -freduction-depth=0
   hs-source-dirs:      benchmark
   main-is:             Main.hs
-  other-modules:       Map
+  other-modules:       CMap
                      , CacheMap
                      , Vector
                      , OptimalVector
