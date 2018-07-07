@@ -9,9 +9,9 @@
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
-module OptimalVector
-       ( benchVectorOpt
-       , prepareBenchVectorOpt
+module CacheMap
+       ( benchCacheMap
+       , prepareBenchCacheMap
        ) where
 
 import Criterion.Main (Benchmark, bench, bgroup, nf)
@@ -25,10 +25,10 @@ import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 import GHC.TypeLits
 
-import Data.TypeRep.OptimalVector (TF (..), TypeRepMap (..), fromList, lookup)
+import Data.TypeRep.Map (TF (..), TypeRepMap (..), fromList, lookup)
 
-benchVectorOpt :: Benchmark
-benchVectorOpt = bgroup "vector optimal"
+benchCacheMap :: Benchmark
+benchCacheMap = bgroup "vector optimal cache"
    [ bench "lookup"     $ nf tenLookups bigMap
    -- , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
    -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
@@ -54,5 +54,5 @@ buildBigMap n x = (TF x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
 rknf :: TypeRepMap f -> ()
 rknf tVect = rnf (fingerprintAs tVect, fingerprintBs tVect)
 
-prepareBenchVectorOpt :: IO ()
-prepareBenchVectorOpt = evaluate (rknf bigMap)
+prepareBenchCacheMap :: IO ()
+prepareBenchCacheMap = evaluate (rknf bigMap)
