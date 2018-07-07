@@ -76,15 +76,17 @@ benchmark typerep-map-benchmark
                      , OptimalVector
   build-depends:       base
                      , criterion
-                     , typerep-map
                      , typerep-map-internal
                      , deepseq
+                     , dependent-map
+                     , dependent-sum
                      , ghc-typelits-knownnat
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables
                        TypeApplications
-
+  if impl(ghc >= 8.2.2)
+    other-modules:     DMap
 
 source-repository head
   type:                git
