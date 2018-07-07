@@ -21,7 +21,7 @@ library
   exposed-modules:     Data.TypeRep.Map
   ghc-options:         -Wall
   build-depends:       base
-                     , typerep-map-internal -any
+                     , typerep-map-internal
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables

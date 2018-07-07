@@ -53,8 +53,21 @@ empty :: TypeRepMap f
 empty = TypeRepMap mempty mempty mempty
 
 -- | Inserts the value with its type as a key.
-insert :: forall a f . Typeable a => a -> TypeRepMap f -> TypeRepMap f
-insert = undefined
+insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
+insert x = fromListPairs . addX . toPairList
+  where
+    toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
+    toPairList (TypeRepMap as bs ans) = zip (zipWith Fingerprint
+                                                    (Unboxed.toList as)
+                                                    (Unboxed.toList bs))
+                                            (V.toList ans)
+
+    pairX :: (Fingerprint, Any)
+    pairX@(fpX, _) = (calcFp x, unsafeCoerce x)
+
+    addX :: [(Fingerprint, Any)] -> [(Fingerprint, Any)]
+    addX l = pairX : filter ((/= fpX) . fst) l
+{-# INLINE insert #-}
 
 -- | Looks up the value at the type.
 -- >>> let x = lookup $ insert (11 :: Int) empty
@@ -106,14 +119,20 @@ data TF f where
 fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
 
-fromList :: forall f . [TF f] -> TypeRepMap f
-fromList tfs = TypeRepMap (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (V.fromList ans)
-  where
-    (fpAs, fpBs) = unzip $ fmap (\(Fingerprint a b) -> (a, b)) fps
-    (fps, ans) = unzip $ breadthFirst $ fromListToTree $ sortWith fst $ map (fp &&& an) tfs
+calcFp :: Typeable a => f a -> Fingerprint
+calcFp = typeRepFingerprint . typeRep . fromF
 
+fromListPairs :: [(Fingerprint, Any)] -> TypeRepMap f
+fromListPairs kvs = TypeRepMap (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (V.fromList ans)
+  where
+    (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
+    (fps, ans) = unzip $ breadthFirst $ fromListToTree $ sortWith fst kvs
+
+fromList :: forall f . [TF f] -> TypeRepMap f
+fromList = fromListPairs . map (fp &&& an)
+  where
     fp :: TF f -> Fingerprint
-    fp (TF x) = typeRepFingerprint $ typeRep $ fromF x
+    fp (TF x) = calcFp x
 
     an :: TF f -> Any
     an (TF x) = unsafeCoerce x
