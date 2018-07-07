@@ -20,6 +20,7 @@ module Data.TypeRep.CacheMap
          -- * Helpful testing functions
        , TF (..)
        , fromList
+       , cachedBinarySearch
        ) where
 
 import Prelude hiding (lookup)
@@ -115,6 +116,10 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
 
 data TF f where
   TF :: Typeable a => f a -> TF f
+
+instance Eq (TF f) where
+    (TF f1) == (TF f2) = typeRepFingerprint (typeRep $ fromF f1)
+                      == typeRepFingerprint (typeRep $ fromF f2)
 
 fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
