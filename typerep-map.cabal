@@ -19,9 +19,12 @@ tested-with:         GHC == 8.0.2
 library
   hs-source-dirs:      src
   exposed-modules:     Data.TypeRep.Map
+--                       Data.TypeRep.CacheMap
   ghc-options:         -Wall
   build-depends:       base
                      , typerep-map-internal
+                     , ghc-prim
+                     , vector
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables
@@ -29,11 +32,11 @@ library
   default-language:    Haskell2010
 
 library typerep-map-internal
-  hs-source-dirs:      internal
+  hs-source-dirs:      src
   exposed-modules:     Data.TypeRep.CMap
-                       Data.TypeRep.CacheMap
+--                       Data.TypeRep.CacheMap
                        Data.TypeRep.OptimalVector
-                       Data.TypeRep.Vector
+--                       Data.TypeRep.Vector
   ghc-options:         -Wall
   build-depends:       base
                      , containers
