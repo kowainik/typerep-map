@@ -72,13 +72,15 @@ benchmark typerep-map-benchmark
   main-is:             Main.hs
   other-modules:       CMap
                      , CacheMap
+                     , DMap
                      , Vector
                      , OptimalVector
   build-depends:       base
                      , criterion
-                     , typerep-map
                      , typerep-map-internal
                      , deepseq
+                     , dependent-map
+                     , dependent-sum
                      , ghc-typelits-knownnat
   default-extensions:  OverloadedStrings
                        RecordWildCards

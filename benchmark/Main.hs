@@ -4,6 +4,7 @@ import Criterion.Main (defaultMain)
 
 import CacheMap (benchCacheMap, prepareBenchCacheMap)
 import CMap (benchMap, prepareBenchMap)
+import DMap (benchDMap, prepareBenchDMap)
 import OptimalVector (benchVectorOpt, prepareBenchVectorOpt)
 --import Vector (benchVector, prepareBenchVector)
 
@@ -13,9 +14,11 @@ main = do
   prepareBenchCacheMap
   --prepareBenchVector
   prepareBenchVectorOpt
+  prepareBenchDMap
   defaultMain
     [ benchMap
    -- , benchVector
     , benchCacheMap
     , benchVectorOpt
+    , benchDMap
     ]

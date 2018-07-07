@@ -2,7 +2,6 @@
 {-# LANGUAGE ExplicitNamespaces   #-}
 {-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE PolyKinds            #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -25,7 +24,7 @@ import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 import GHC.TypeLits
 
-import Data.TypeRep.Map (TF (..), TypeRepMap (..), fromList, lookup)
+import Data.TypeRep.CacheMap (TF (..), TypeRepMap (..), fromList, lookup)
 
 benchCacheMap :: Benchmark
 benchCacheMap = bgroup "vector optimal cache"
