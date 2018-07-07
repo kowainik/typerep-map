@@ -72,7 +72,6 @@ benchmark typerep-map-benchmark
   main-is:             Main.hs
   other-modules:       CMap
                      , CacheMap
-                     , DMap
                      , Vector
                      , OptimalVector
   build-depends:       base
@@ -86,7 +85,8 @@ benchmark typerep-map-benchmark
                        RecordWildCards
                        ScopedTypeVariables
                        TypeApplications
-
+  if impl(ghc >= 8.2.2)
+    other-modules:     DMap
 
 source-repository head
   type:                git
