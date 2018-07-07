@@ -63,10 +63,11 @@ insert = undefined
 -- >>> x :: Maybe ()
 -- Nothing
 lookup :: forall a f . Typeable a => TypeRepMap f -> Maybe (f a)
-lookup tVect =  fromAny . (anys tVect V.!)
-            <$> cachedBinarySearch (typeRepFingerprint $ typeRep $ Proxy @a)
-                             (fingerprintAs tVect)
-                             (fingerprintBs tVect)
+lookup tVect = fromAny . (anys tVect V.!)
+           <$> cachedBinarySearch (typeRepFingerprint $ typeRep $ Proxy @a)
+                                  (fingerprintAs tVect)
+                                  (fingerprintBs tVect)
+{-# INLINE lookup #-}
 
 -- | Returns the size of the 'TypeRepMap'.
 size :: TypeRepMap f -> Int
@@ -93,6 +94,7 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
 
     len :: Int#
     len = let !(I# l) = Unboxed.length fpAs in l
+{-# INLINE cachedBinarySearch #-}
 
 ----------------------------------------------------------------------------
 -- Functions for testing and benchmarking
