@@ -16,7 +16,7 @@ matrix:
   include:
 
   - ghc: 8.0.2
-    env: GHCVER='8.0.2' CABALVER='head'
+    env: GHCVER='8.0.2' CABALVER='head' ALLOWNEWER='--allow-newer'
     os: linux
     addons:
       apt:
@@ -77,7 +77,7 @@ install:
 script:
   - |
     if [ -z "$STACK_YAML" ]; then
-      cabal new-test
+      cabal new-test $ALLOWNEWER
     else
       stack build --test --bench --no-terminal
     fi

@@ -52,7 +52,7 @@ test-suite typerep-map-test
   main-is:             Test.hs
   other-modules:       Test.TypeRep.CMap
                      , Test.TypeRep.CacheMap
-                     , Test.TypeRep.Property
+                     , Test.TypeRep.MapProperty
                      , Test.TypeRep.Vector
                      , Test.TypeRep.VectorOpt
   build-depends:       base

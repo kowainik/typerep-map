@@ -21,6 +21,7 @@ module Data.TypeRep.CacheMap
          -- * Helpful testing functions
        , TF (..)
        , fromList
+       , toFps
        ) where
 
 import Prelude hiding (lookup)
@@ -52,10 +53,10 @@ data TypeRepMap (f :: k -> Type) = TypeRepMap
     }
 
 instance Show (TypeRepMap f) where
-    show = show . zipFp
+    show = show . toFps
 
-zipFp :: TypeRepMap f -> [Fingerprint]
-zipFp TypeRepMap{..} = zipWith Fingerprint
+toFps :: TypeRepMap f -> [Fingerprint]
+toFps TypeRepMap{..} = zipWith Fingerprint
                                (Unboxed.toList fingerprintAs)
                                (Unboxed.toList fingerprintBs)
 
@@ -71,7 +72,7 @@ insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x = fromListPairs . addX . toPairList
   where
     toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
-    toPairList trMap = zip (zipFp trMap) (V.toList $ anys trMap)
+    toPairList trMap = zip (toFps trMap) (V.toList $ anys trMap)
 
     pairX :: (Fingerprint, Any)
     pairX@(fpX, _) = (calcFp x, unsafeCoerce x)
@@ -161,7 +162,7 @@ nubPairs = nubBy ((==) `on` fst)
 fromSortedList :: forall a . [a] -> [a]
 fromSortedList l = IM.elems $ fst $ go 0 0 mempty (IM.fromList $ zip [0..] l)
   where
-    -- TODO: state monad should be used here
+    -- state monad could be used here, but it's another dependency
     go :: Int -> Int -> IntMap a -> IntMap a -> (IntMap a, Int)
     go i first result vector =
       if i >= IM.size vector
@@ -169,5 +170,4 @@ fromSortedList l = IM.elems $ fst $ go 0 0 mempty (IM.fromList $ zip [0..] l)
       else do
           let (newResult, newFirst) = go (2 * i + 1) first result vector
           let withCur = IM.insert i (fromJust $ IM.lookup newFirst vector) newResult
-          let (newResult2, newFirst2) = go (2 * i + 2) (newFirst + 1) withCur vector
-          (newResult2, newFirst2)
+          go (2 * i + 2) (newFirst + 1) withCur vector
