@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns   #-}
+{-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE GADTs          #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MagicHash      #-}
@@ -25,7 +26,11 @@ module Data.TypeRep.CacheMap
 import Prelude hiding (lookup)
 
 import Control.Arrow ((&&&))
+import Data.Function (on)
+import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
+import Data.List (nubBy)
+import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import Data.Word (Word64)
@@ -36,6 +41,7 @@ import GHC.Prim (eqWord#, ltWord#)
 import GHC.Word (Word64 (..))
 import Unsafe.Coerce (unsafeCoerce)
 
+import qualified Data.IntMap.Strict as IM
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as Unboxed
 
@@ -44,6 +50,14 @@ data TypeRepMap (f :: k -> Type) = TypeRepMap
     , fingerprintBs :: Unboxed.Vector Word64
     , anys          :: V.Vector Any
     }
+
+instance Show (TypeRepMap f) where
+    show = show . zipFp
+
+zipFp :: TypeRepMap f -> [Fingerprint]
+zipFp TypeRepMap{..} = zipWith Fingerprint
+                               (Unboxed.toList fingerprintAs)
+                               (Unboxed.toList fingerprintBs)
 
 fromAny :: Any -> f a
 fromAny = unsafeCoerce
@@ -57,10 +71,7 @@ insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x = fromListPairs . addX . toPairList
   where
     toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
-    toPairList (TypeRepMap as bs ans) = zip (zipWith Fingerprint
-                                                    (Unboxed.toList as)
-                                                    (Unboxed.toList bs))
-                                            (V.toList ans)
+    toPairList trMap = zip (zipFp trMap) (V.toList $ anys trMap)
 
     pairX :: (Fingerprint, Any)
     pairX@(fpX, _) = (calcFp x, unsafeCoerce x)
@@ -114,7 +125,10 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
 ----------------------------------------------------------------------------
 
 data TF f where
-  TF :: Typeable a => f a -> TF f
+    TF :: Typeable a => f a -> TF f
+
+instance Show (TF f) where
+    show (TF tf) = show $ calcFp tf
 
 fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
@@ -126,7 +140,7 @@ fromListPairs :: [(Fingerprint, Any)] -> TypeRepMap f
 fromListPairs kvs = TypeRepMap (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (V.fromList ans)
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
-    (fps, ans) = unzip $ breadthFirst $ fromListToTree $ sortWith fst kvs
+    (fps, ans) = unzip $ fromSortedList $ sortWith fst $ nubPairs kvs
 
 fromList :: forall f . [TF f] -> TypeRepMap f
 fromList = fromListPairs . map (fp &&& an)
@@ -137,34 +151,23 @@ fromList = fromListPairs . map (fp &&& an)
     an :: TF f -> Any
     an (TF x) = unsafeCoerce x
 
+nubPairs :: (Eq a) => [(a, b)] -> [(a, b)]
+nubPairs = nubBy ((==) `on` fst)
+
 ----------------------------------------------------------------------------
--- Tree
+-- Tree-like conversion
 ----------------------------------------------------------------------------
 
-data Tree a = Leaf | Node a (Tree a) (Tree a)
-    deriving (Show)
-
-fromListToTree :: [a] -> Tree a
-fromListToTree [] = Leaf
-fromListToTree xs =
-    let len = length xs
-    in case splitAt (len `div` 2) xs of
-           ([], [])     -> Leaf
-           (ls, [])     -> Node (last ls) (fromListToTree $ init ls) Leaf
-           ([], (r:rs)) -> Node r Leaf $ fromListToTree rs
-           (ls, r:rs)   -> Node r (fromListToTree ls) (fromListToTree rs)
-
-breadthFirst :: Tree a -> [a]
-breadthFirst tree = bf [tree]
+fromSortedList :: forall a . [a] -> [a]
+fromSortedList l = IM.elems $ fst $ go 0 0 mempty (IM.fromList $ zip [0..] l)
   where
-    bf :: [Tree a] -> [a]
-    bf [] = []
-    bf xs = mapValue xs ++ bf (concatMap children xs)
-
-    mapValue :: [Tree a] -> [a]
-    mapValue []                = []
-    mapValue (Leaf : xs)       = mapValue xs
-    mapValue (Node a _ _ : xs) = a : mapValue xs
-
-    children Leaf         = []
-    children (Node _ l r) = [l, r]
+    -- TODO: state monad should be used here
+    go :: Int -> Int -> IntMap a -> IntMap a -> (IntMap a, Int)
+    go i first result vector =
+      if i >= IM.size vector
+      then (result, first)
+      else do
+          let (newResult, newFirst) = go (2 * i + 1) first result vector
+          let withCur = IM.insert i (fromJust $ IM.lookup newFirst vector) newResult
+          let (newResult2, newFirst2) = go (2 * i + 2) (newFirst + 1) withCur vector
+          (newResult2, newFirst2)
