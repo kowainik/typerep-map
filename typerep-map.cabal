@@ -52,16 +52,23 @@ test-suite typerep-map-test
   main-is:             Test.hs
   other-modules:       Test.TypeRep.CMap
                      , Test.TypeRep.CacheMap
+                     , Test.TypeRep.MapProperty
                      , Test.TypeRep.Vector
                      , Test.TypeRep.VectorOpt
   build-depends:       base
+                     , ghc-typelits-knownnat
+                     , hedgehog
                      , typerep-map
                      , typerep-map-internal
                      , tasty
                      , tasty-discover >= 4.1.1
+                     , tasty-hedgehog
                      , tasty-hspec
   build-tool-depends:  tasty-discover:tasty-discover
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:  ScopedTypeVariables
+                       TypeApplications
+
   default-language:    Haskell2010
 
 benchmark typerep-map-benchmark
@@ -76,11 +83,11 @@ benchmark typerep-map-benchmark
                      , OptimalVector
   build-depends:       base
                      , criterion
-                     , typerep-map-internal
                      , deepseq
                      , dependent-map
                      , dependent-sum
                      , ghc-typelits-knownnat
+                     , typerep-map-internal
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables
