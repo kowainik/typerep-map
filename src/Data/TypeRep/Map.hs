@@ -12,6 +12,8 @@ module Data.TypeRep.Map
        , insert
        , delete
        , hoist
+       , unionWith
+       , union
 
          -- * Query
        , lookup

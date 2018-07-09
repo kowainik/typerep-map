@@ -21,6 +21,8 @@ module Data.TypeRep.CacheMap
        , insert
        , delete
        , hoist
+       , unionWith
+       , union
        , lookup
        , member
        , size
@@ -51,6 +53,7 @@ import GHC.Word (Word64 (..))
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.IntMap.Strict as IM
+import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
 
 -- | Map-like data structure that keeps types as keys.
@@ -123,6 +126,25 @@ Just "a"
 -}
 hoist :: (forall x. f x -> g x) -> TypeRepMap f -> TypeRepMap g
 hoist f (TypeRepMap as bs ans) = TypeRepMap as bs $ mapArray' (toAny . f . fromAny) ans
+{-# INLINE hoist #-}
+
+-- | The union with a combining function.
+unionWith :: (forall x. f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+unionWith f m1 m2 = fromListPairs
+                  $ Map.toList
+                  $ Map.unionWith combine
+                                  (Map.fromList $ toPairList m1)
+                                  (Map.fromList $ toPairList m2)
+  where
+    combine :: Any -> Any -> Any
+    combine a b = toAny $ f (fromAny a) (fromAny b)
+{-# INLINE unionWith #-}
+
+-- | The (left-biased) union of two maps. It prefers the first map when
+-- duplicate keys are encountered, i.e. @'union' == 'unionWith' const@.
+union :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+union = unionWith const
+{-# INLINE union #-}
 
 {- | Returns 'True' if there exist value of given type.
 

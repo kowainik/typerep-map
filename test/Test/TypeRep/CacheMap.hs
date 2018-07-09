@@ -5,7 +5,7 @@ import Prelude hiding (lookup)
 import Data.Functor.Identity (Identity (..))
 import Test.Tasty.Hspec (Spec, describe, it, shouldBe)
 
-import Data.TypeRep.CacheMap (TF (..), TypeRepMap, empty, fromList, insert, lookup, size)
+import Data.TypeRep.CacheMap (TF (..), TypeRepMap, empty, fromList, insert, lookup, size, union)
 
 -- Simple test for 'lookup', 'insert' and 'size' functions.
 spec_insertLookup :: Spec
@@ -25,6 +25,13 @@ spec_insertLookup = do
             size (insert (Identity 'b') $ insert (Identity 'a') empty) `shouldBe` 1
         it "returns 10 when 10 different types are inserted" $
             size mapOf10 `shouldBe` 10
+
+    describe "Union test" $ do
+        let m = fromList [TF $ Identity 'a', TF $ Identity True] `union` fromList [TF $ Identity 'b']
+        it "lookup works on union as expected" $ do
+            lookup m `shouldBe` Just (Identity 'a')
+            lookup m `shouldBe` Just (Identity True)
+            lookup @Int m `shouldBe` Nothing
 
 
 mapOf10 :: TypeRepMap Identity
