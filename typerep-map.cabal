@@ -1,5 +1,5 @@
 name:                typerep-map
-version:             0.1.0.0
+version:             1.0
 description:         Efficient implementation of data type with types as keys
 homepage:            https://github.com/vrom911/typerep-map
 bug-reports:         https://github.com/vrom911/typerep-map/issues
@@ -7,7 +7,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Veronika Romashkina
 maintainer:          vrom911@gmail.com
-copyright:           2017 Veronika Romashkina
+copyright:           2017-2018 Veronika Romashkina
 category:            Data Structures
 build-type:          Simple
 extra-source-files:  README.md

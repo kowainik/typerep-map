@@ -1,10 +1,11 @@
-{-# LANGUAGE BangPatterns   #-}
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE GADTs          #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE MagicHash      #-}
-{-# LANGUAGE PolyKinds      #-}
-{-# LANGUAGE TypeFamilies   #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE MagicHash           #-}
+{-# LANGUAGE TypeInType           #-}
+{-# LANGUAGE TypeFamilies        #-}
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
@@ -14,8 +15,11 @@ module Data.TypeRep.CacheMap
 
          -- 'TypeRepMap' interface
        , empty
+       , one
        , insert
+       , delete
        , lookup
+       , member
        , size
 
          -- * Helpful testing functions
@@ -34,7 +38,6 @@ import Data.List (nubBy)
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
-import Data.Word (Word64)
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
@@ -57,7 +60,7 @@ data TypeRepMap (f :: k -> Type) = TypeRepMap
 instance Show (TypeRepMap f) where
     show = show . toFps
 
--- | Returnes the list of 'Fingerprint's from 'TypeRepMap'.
+-- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFps :: TypeRepMap f -> [Fingerprint]
 toFps TypeRepMap{..} = zipWith Fingerprint
                                (Unboxed.toList fingerprintAs)
@@ -70,19 +73,50 @@ fromAny = unsafeCoerce
 empty :: TypeRepMap f
 empty = TypeRepMap mempty mempty mempty
 
+-- | Creates structure of size 1 from single element.
+one :: forall a f . Typeable a => f a -> TypeRepMap f
+one x = insert x empty
+{-# INLINE one #-}
+
 -- | Inserts the value with its type as a key.
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x = fromListPairs . addX . toPairList
   where
-    toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
-    toPairList trMap = zip (toFps trMap) (V.toList $ anys trMap)
-
     pairX :: (Fingerprint, Any)
     pairX@(fpX, _) = (calcFp x, unsafeCoerce x)
 
     addX :: [(Fingerprint, Any)] -> [(Fingerprint, Any)]
-    addX l = pairX : filter ((/= fpX) . fst) l
+    addX l = pairX : deleteByFst fpX l
 {-# INLINE insert #-}
+
+{- | Deletes value from list.
+
+>>> let trMap = delete @Bool $ insert (Identity True) $ one (Identity 'a')
+>>> size trMap
+1
+>>> member @Bool trMap
+False
+>>> member @Char trMap
+True
+-}
+delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
+delete = fromListPairs . deleteByFst (typeFp @a) . toPairList
+{-# INLINE delete #-}
+
+type KindOf (a :: k) = k
+
+{- | Returns 'True' if there exist value of given type.
+
+>>> member @Char $ one (Identity 'a')
+True
+>>> member @Bool $ one (Identity 'a')
+False
+-}
+member :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> Bool
+member trMap = case lookup @a trMap of
+    Nothing -> False
+    Just _  -> True
+{-# INLINE member #-}
 
 {- | Looks up the value at the type.
 
@@ -91,11 +125,10 @@ insert x = fromListPairs . addX . toPairList
 Just (Identity 11)
 >>> x :: Maybe (Identity ())
 Nothing
-
 -}
 lookup :: forall a f . Typeable a => TypeRepMap f -> Maybe (f a)
 lookup tVect = fromAny . (anys tVect V.!)
-           <$> cachedBinarySearch (typeRepFingerprint $ typeRep $ Proxy @a)
+           <$> cachedBinarySearch (typeFp @a)
                                   (fingerprintAs tVect)
                                   (fingerprintBs tVect)
 {-# INLINE lookup #-}
@@ -127,6 +160,23 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
     len :: Int#
     len = let !(I# l) = Unboxed.length fpAs in l
 {-# INLINE cachedBinarySearch #-}
+
+----------------------------------------------------------------------------
+-- Internal functions
+----------------------------------------------------------------------------
+
+typeFp :: forall a . Typeable a => Fingerprint
+typeFp = typeRepFingerprint $ typeRep $ Proxy @a
+{-# INLINE typeFp #-}
+
+toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
+toPairList trMap = zip (toFps trMap) (V.toList $ anys trMap)
+
+deleteByFst :: Eq a => a -> [(a, b)] -> [(a, b)]
+deleteByFst x = filter ((/= x) . fst)
+
+nubByFst :: (Eq a) => [(a, b)] -> [(a, b)]
+nubByFst = nubBy ((==) `on` fst)
 
 ----------------------------------------------------------------------------
 -- Functions for testing and benchmarking
@@ -165,10 +215,7 @@ fromListPairs :: [(Fingerprint, Any)] -> TypeRepMap f
 fromListPairs kvs = TypeRepMap (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (V.fromList ans)
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
-    (fps, ans) = unzip $ fromSortedList $ sortWith fst $ nubPairs kvs
-
-nubPairs :: (Eq a) => [(a, b)] -> [(a, b)]
-nubPairs = nubBy ((==) `on` fst)
+    (fps, ans) = unzip $ fromSortedList $ sortWith fst $ nubByFst kvs
 
 ----------------------------------------------------------------------------
 -- Tree-like conversion

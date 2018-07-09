@@ -9,7 +9,7 @@
 `typerep-map` introduces `TypeRepMap` — data structure like [`Map`](http://hackage.haskell.org/package/containers-0.6.0.1/docs/Data-Map-Lazy.html#t:Map), but where types serve as keys, and values have the types specified in the corresponding key spots.
 
 ```haskell
-ghci> let typeRepMap = insert (Identity True) $ insert (Identity (42 :: Int)) empty
+ghci> let typeRepMap = insert (Identity True) $ one (Identity (42 :: Int))
 
 ghci> size typeRepMap
 2
@@ -27,4 +27,12 @@ Nothing
 
 ghci> lookup (insert (Identity "hello") typeRepMap) :: Maybe (Identity String)
 Just (Identity "hello")
+
+ghci> member @Int typeRepMap
+True
+
+ghci> let trMap = delete @Int typeRepMap
+
+ghci> member @Int trMap
+False
 ```

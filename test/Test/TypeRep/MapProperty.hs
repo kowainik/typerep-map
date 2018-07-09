@@ -15,7 +15,7 @@ import Hedgehog (MonadGen, PropertyT, forAll, property, (===))
 import Test.Tasty (TestName, TestTree)
 import Test.Tasty.Hedgehog (testProperty)
 
-import Data.TypeRep.CacheMap (TF (..), TypeRepMap, fromList, insert, lookup)
+import Data.TypeRep.CacheMap (TF (..), TypeRepMap, delete, fromList, insert, lookup, member)
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -39,6 +39,16 @@ test_InsertInsert = prop "insert k b . insert k a == insert k b" $ do
     let b = IntProxy proxy (i + 1)
     lookup @n @IntProxy (insert b $ insert a m) === Just b
 
+test_DeleteMember :: PropertyTest
+test_DeleteMember = prop "member k . delete k == False" $ do
+    m <- forAll genMap
+    TF (proxy :: IntProxy n) <- forAll genTF
+    shouldInsert <- forAll Gen.bool
+
+    if shouldInsert then
+        member @n (delete @n $ insert proxy m) === False
+    else
+        member @n (delete @n m) === False
 
 ----------------------------------------------------------------------------
 -- Generators
@@ -47,10 +57,8 @@ test_InsertInsert = prop "insert k b . insert k a == insert k b" $ do
 data IntProxy (n :: Nat) = IntProxy (Proxy n) Int
     deriving (Show, Eq)
 
-
 genMap :: MonadGen m => m (TypeRepMap IntProxy)
 genMap = fromList <$> Gen.list (Range.linear 0 1000) genTF
-
 
 genTF :: MonadGen m => m (TF IntProxy)
 genTF = do
