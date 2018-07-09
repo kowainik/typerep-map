@@ -4,7 +4,7 @@ module Main where
 
 import Criterion.Main (defaultMain)
 
-import CacheMap (benchCacheMap, prepareBenchCacheMap)
+import CacheMap (benchCacheMap)
 import CMap (benchMap, prepareBenchMap)
 #if ( __GLASGOW_HASKELL__ >= 802 )
 import DMap (benchDMap, prepareBenchDMap)
@@ -15,7 +15,6 @@ import OptimalVector (benchVectorOpt, prepareBenchVectorOpt)
 main :: IO ()
 main = do
   prepareBenchMap
-  prepareBenchCacheMap
   --prepareBenchVector
   prepareBenchVectorOpt
 #if ( __GLASGOW_HASKELL__ >= 802 )

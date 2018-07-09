@@ -39,6 +39,8 @@ import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
 import Data.List (nubBy)
 import Data.Maybe (fromJust)
+import Data.Primitive.Array (Array, indexArray, mapArray')
+import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
@@ -49,14 +51,13 @@ import GHC.Word (Word64 (..))
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.IntMap.Strict as IM
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as Unboxed
+import qualified GHC.Exts as GHC (fromList, toList)
 
 -- | Map-like data structure that keeps types as keys.
 data TypeRepMap (f :: k -> Type) = TypeRepMap
-    { fingerprintAs :: {-# UNPACK #-} !(Unboxed.Vector Word64)
-    , fingerprintBs :: {-# UNPACK #-} !(Unboxed.Vector Word64)
-    , anys          :: {-# UNPACK #-} !(V.Vector Any)
+    { fingerprintAs :: {-# UNPACK #-} !(PrimArray Word64)
+    , fingerprintBs :: {-# UNPACK #-} !(PrimArray Word64)
+    , anys          :: {-# UNPACK #-} !(Array Any)
     }
 
 -- | Shows only 'Fingerprint's.
@@ -66,8 +67,8 @@ instance Show (TypeRepMap f) where
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFps :: TypeRepMap f -> [Fingerprint]
 toFps TypeRepMap{..} = zipWith Fingerprint
-                               (Unboxed.toList fingerprintAs)
-                               (Unboxed.toList fingerprintBs)
+                               (GHC.toList fingerprintAs)
+                               (GHC.toList fingerprintBs)
 
 
 -- | Empty structure.
@@ -121,7 +122,7 @@ Just [True]
 Just "a"
 -}
 hoist :: (forall x. f x -> g x) -> TypeRepMap f -> TypeRepMap g
-hoist f (TypeRepMap as bs ans) = TypeRepMap as bs $ V.map (toAny . f . fromAny) ans
+hoist f (TypeRepMap as bs ans) = TypeRepMap as bs $ mapArray' (toAny . f . fromAny) ans
 
 {- | Returns 'True' if there exist value of given type.
 
@@ -145,7 +146,7 @@ Just (Identity 11)
 Nothing
 -}
 lookup :: forall a f . Typeable a => TypeRepMap f -> Maybe (f a)
-lookup tVect = fromAny . (anys tVect V.!)
+lookup tVect = fromAny . (anys tVect `indexArray`)
            <$> cachedBinarySearch (typeFp @a)
                                   (fingerprintAs tVect)
                                   (fingerprintBs tVect)
@@ -153,22 +154,22 @@ lookup tVect = fromAny . (anys tVect V.!)
 
 -- | Returns the size of the 'TypeRepMap'.
 size :: TypeRepMap f -> Int
-size = Unboxed.length . fingerprintAs
+size = sizeofPrimArray . fingerprintAs
 {-# INLINE size #-}
 
 -- | Binary searched based on this article
 -- http://bannalia.blogspot.com/2015/06/cache-friendly-binary-search.html
 -- with modification for our two-vector search case.
-cachedBinarySearch :: Fingerprint -> Unboxed.Vector Word64 -> Unboxed.Vector Word64 -> Maybe Int
+cachedBinarySearch :: Fingerprint -> PrimArray Word64 -> PrimArray Word64 -> Maybe Int
 cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
   where
     go :: Int# -> Maybe Int
     go i = case i <# len of
         0# -> Nothing
-        _  -> let !(W64# valA) = Unboxed.unsafeIndex fpAs (I# i) in case a `ltWord#` valA of
+        _  -> let !(W64# valA) = indexPrimArray fpAs (I# i) in case a `ltWord#` valA of
             0#  -> case a `eqWord#` valA of
                 0# -> go (2# *# i +# 2#)
-                _ -> let !(W64# valB) = Unboxed.unsafeIndex fpBs (I# i) in case b `eqWord#` valB of
+                _ -> let !(W64# valB) = indexPrimArray fpBs (I# i) in case b `eqWord#` valB of
                     0# -> case b `ltWord#` valB of
                         0# -> go (2# *# i +# 2#)
                         _  -> go (2# *# i +# 1#)
@@ -176,7 +177,7 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
             _ -> go (2# *# i +# 1#)
 
     len :: Int#
-    len = let !(I# l) = Unboxed.length fpAs in l
+    len = let !(I# l) = sizeofPrimArray fpAs in l
 {-# INLINE cachedBinarySearch #-}
 
 ----------------------------------------------------------------------------
@@ -194,7 +195,7 @@ typeFp = typeRepFingerprint $ typeRep $ Proxy @a
 {-# INLINE typeFp #-}
 
 toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
-toPairList trMap = zip (toFps trMap) (V.toList $ anys trMap)
+toPairList trMap = zip (toFps trMap) (GHC.toList $ anys trMap)
 
 deleteByFst :: Eq a => a -> [(a, b)] -> [(a, b)]
 deleteByFst x = filter ((/= x) . fst)
@@ -236,7 +237,7 @@ calcFp :: Typeable a => f a -> Fingerprint
 calcFp = typeRepFingerprint . typeRep . fromF
 
 fromListPairs :: [(Fingerprint, Any)] -> TypeRepMap f
-fromListPairs kvs = TypeRepMap (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (V.fromList ans)
+fromListPairs kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans)
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
     (fps, ans) = unzip $ fromSortedList $ sortWith fst $ nubByFst kvs

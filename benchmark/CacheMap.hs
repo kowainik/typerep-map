@@ -10,15 +10,12 @@
 
 module CacheMap
        ( benchCacheMap
-       , prepareBenchCacheMap
        ) where
 
 import Criterion.Main (Benchmark, bench, bgroup, nf)
 
 import Prelude hiding (lookup)
 
-import Control.DeepSeq (rnf)
-import Control.Exception
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
@@ -53,9 +50,3 @@ buildBigMap :: forall a . (KnownNat a)
             -> [TF (Proxy :: Nat -> *)]
 buildBigMap 1 x = (TF x :)
 buildBigMap n x = (TF x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
-
-rknf :: TypeRepMap f -> ()
-rknf tVect = rnf (fingerprintAs tVect, fingerprintBs tVect)
-
-prepareBenchCacheMap :: IO ()
-prepareBenchCacheMap = evaluate (rknf bigMap)
