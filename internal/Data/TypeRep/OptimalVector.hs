@@ -77,12 +77,9 @@ binarySearch (Fingerprint a b) fpAs fpBs =
       checkfpBs i =
         case i <# len of
           0# -> Nothing
-          _ ->
-            if a /= Unboxed.unsafeIndex fpAs (I# i)
-            then Nothing
-            else if b == Unboxed.unsafeIndex fpBs (I# i)
-                 then Just (I# i)
-                 else checkfpBs (i +# 1#)
+          _ | a /= Unboxed.unsafeIndex fpAs (I# i) -> Nothing
+            | b == Unboxed.unsafeIndex fpBs (I# i) -> Just (I# i)
+            | otherwise -> checkfpBs (i +# 1#)
     in
       inline (checkfpBs (binSearchHelp (-1#) len))
   where

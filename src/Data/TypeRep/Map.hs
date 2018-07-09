@@ -1,3 +1,5 @@
+-- | This module introduces the 'TypeRepMap' data structure and functions to work with it.
+
 module Data.TypeRep.Map
        ( -- * Map type
          TypeRepMap (..)

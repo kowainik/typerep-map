@@ -46,15 +46,18 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as Unboxed
 
+-- | Map-like data structure that keeps types as keys.
 data TypeRepMap (f :: k -> Type) = TypeRepMap
     { fingerprintAs :: Unboxed.Vector Word64
     , fingerprintBs :: Unboxed.Vector Word64
     , anys          :: V.Vector Any
     }
 
+-- | Shows only 'Fingerprint's.
 instance Show (TypeRepMap f) where
     show = show . toFps
 
+-- | Returnes the list of 'Fingerprint's from 'TypeRepMap'.
 toFps :: TypeRepMap f -> [Fingerprint]
 toFps TypeRepMap{..} = zipWith Fingerprint
                                (Unboxed.toList fingerprintAs)
@@ -81,12 +84,15 @@ insert x = fromListPairs . addX . toPairList
     addX l = pairX : filter ((/= fpX) . fst) l
 {-# INLINE insert #-}
 
--- | Looks up the value at the type.
--- >>> let x = lookup $ insert (11 :: Int) empty
--- >>> x :: Maybe Int
--- Just 11
--- >>> x :: Maybe ()
--- Nothing
+{- | Looks up the value at the type.
+
+>>> let x = lookup $ insert (Identity (11 :: Int)) empty
+>>> x :: Maybe (Identity Int)
+Just (Identity 11)
+>>> x :: Maybe (Identity ())
+Nothing
+
+-}
 lookup :: forall a f . Typeable a => TypeRepMap f -> Maybe (f a)
 lookup tVect = fromAny . (anys tVect V.!)
            <$> cachedBinarySearch (typeRepFingerprint $ typeRep $ Proxy @a)
@@ -97,6 +103,7 @@ lookup tVect = fromAny . (anys tVect V.!)
 -- | Returns the size of the 'TypeRepMap'.
 size :: TypeRepMap f -> Int
 size = Unboxed.length . fingerprintAs
+{-# INLINE size #-}
 
 -- | Binary searched based on this article
 -- http://bannalia.blogspot.com/2015/06/cache-friendly-binary-search.html
@@ -125,11 +132,28 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
 -- Functions for testing and benchmarking
 ----------------------------------------------------------------------------
 
+-- | Existential wrapper around 'Typeable' indexed by @f@ type parameter.
+-- Useful for 'TypeRepMap' structure creation form list of 'TF's.
 data TF f where
     TF :: Typeable a => f a -> TF f
 
 instance Show (TF f) where
     show (TF tf) = show $ calcFp tf
+
+{- | Creates 'TypeRepMap' from a list of 'TF's.
+
+>>> size $ fromList [TF $ Identity True, TF $ Identity 'a']
+2
+
+-}
+fromList :: forall f . [TF f] -> TypeRepMap f
+fromList = fromListPairs . map (fp &&& an)
+  where
+    fp :: TF f -> Fingerprint
+    fp (TF x) = calcFp x
+
+    an :: TF f -> Any
+    an (TF x) = unsafeCoerce x
 
 fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
@@ -142,15 +166,6 @@ fromListPairs kvs = TypeRepMap (Unboxed.fromList fpAs) (Unboxed.fromList fpBs) (
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
     (fps, ans) = unzip $ fromSortedList $ sortWith fst $ nubPairs kvs
-
-fromList :: forall f . [TF f] -> TypeRepMap f
-fromList = fromListPairs . map (fp &&& an)
-  where
-    fp :: TF f -> Fingerprint
-    fp (TF x) = calcFp x
-
-    an :: TF f -> Any
-    an (TF x) = unsafeCoerce x
 
 nubPairs :: (Eq a) => [(a, b)] -> [(a, b)]
 nubPairs = nubBy ((==) `on` fst)
