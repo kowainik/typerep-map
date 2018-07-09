@@ -43,6 +43,7 @@ library typerep-map-internal
   build-depends:       base
                      , containers
                      , ghc-prim
+                     , primitive
                      , vector
   default-extensions:  OverloadedStrings
                        RecordWildCards
