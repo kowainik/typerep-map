@@ -1,20 +1,25 @@
 name:                typerep-map
-version:             0.1.0.0
-description:         Efficient implementation of data type with types as keys
-homepage:            https://github.com/vrom911/typerep-map
-bug-reports:         https://github.com/vrom911/typerep-map/issues
+version:             1.0
+synopsis:            Efficient implementation of data type with types as keys
+description:         See README.md for more details.
+homepage:            https://github.com/kowainik/typerep-map
+bug-reports:         https://github.com/kowainik/typerep-map/issues
 license:             MIT
 license-file:        LICENSE
-author:              Veronika Romashkina
-maintainer:          vrom911@gmail.com
-copyright:           2017 Veronika Romashkina
-category:            Data Structures
+author:              Kowainik, Vladislav Zavialov
+maintainer:          xrom.xkov@gmail.com
+copyright:           2017-2018 Kowainik
+category:            Data, Data Structures, Types
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       2.0
 tested-with:         GHC == 8.0.2
                    , GHC == 8.2.2
                    , GHC == 8.4.3
+
+source-repository head
+  type:                git
+  location:            https://github.com/kowainik/typerep-map.git
 
 library
   hs-source-dirs:      src
@@ -94,7 +99,3 @@ benchmark typerep-map-benchmark
                        TypeApplications
   if impl(ghc >= 8.2.2)
     other-modules:     DMap
-
-source-repository head
-  type:                git
-  location:            https://github.com/vrom911/typerep-map.git

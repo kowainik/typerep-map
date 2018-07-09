@@ -6,8 +6,11 @@ module Data.TypeRep.Map
 
          -- 'TypeRepMap' interface
        , empty
+       , one
        , insert
+       , delete
        , lookup
+       , member
        , size
 
          -- * Helpful testing functions
