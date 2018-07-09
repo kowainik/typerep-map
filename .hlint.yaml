@@ -1,0 +1,6 @@
+- ignore: {name: "Use camelCase"}
+
+- arguments:
+  - -XTypeApplications
+
+- warn: {name: "Use explicit module export list"}

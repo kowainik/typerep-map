@@ -47,7 +47,10 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
 bigMap :: TypeRepMap (Proxy :: Nat -> *)
 bigMap = fromList $ buildBigMap 10000 (Proxy :: Proxy 0) []
 
-buildBigMap :: forall a . (KnownNat a) => Int -> Proxy (a :: Nat) -> [TF (Proxy :: Nat -> *)] -> [TF (Proxy :: Nat -> *)]
+buildBigMap :: forall a . (KnownNat a)
+            => Int -> Proxy (a :: Nat)
+            -> [TF (Proxy :: Nat -> *)]
+            -> [TF (Proxy :: Nat -> *)]
 buildBigMap 1 x = (TF x :)
 buildBigMap n x = (TF x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
 
