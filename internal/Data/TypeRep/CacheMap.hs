@@ -73,7 +73,7 @@ fromAny = unsafeCoerce
 empty :: TypeRepMap f
 empty = TypeRepMap mempty mempty mempty
 
--- | Creates structure of size 1 from single element.
+-- | Construct a 'TypeRepMap' with a single element.
 one :: forall a f . Typeable a => f a -> TypeRepMap f
 one x = insert x empty
 {-# INLINE one #-}
@@ -89,6 +89,9 @@ insert x = fromListPairs . addX . toPairList
     addX l = pairX : deleteByFst fpX l
 {-# INLINE insert #-}
 
+-- Helper type to workaround some issues with types
+type KindOf (a :: k) = k
+
 {- | Deletes value from list.
 
 >>> let trMap = delete @Bool $ insert (Identity True) $ one (Identity 'a')
@@ -102,8 +105,6 @@ True
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
 delete = fromListPairs . deleteByFst (typeFp @a) . toPairList
 {-# INLINE delete #-}
-
-type KindOf (a :: k) = k
 
 {- | Returns 'True' if there exist value of given type.
 
