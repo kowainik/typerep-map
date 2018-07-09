@@ -4,8 +4,10 @@
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE MagicHash           #-}
-{-# LANGUAGE TypeInType           #-}
+{-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeInType          #-}
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
@@ -18,6 +20,7 @@ module Data.TypeRep.CacheMap
        , one
        , insert
        , delete
+       , hoist
        , lookup
        , member
        , size
@@ -66,8 +69,6 @@ toFps TypeRepMap{..} = zipWith Fingerprint
                                (Unboxed.toList fingerprintAs)
                                (Unboxed.toList fingerprintBs)
 
-fromAny :: Any -> f a
-fromAny = unsafeCoerce
 
 -- | Empty structure.
 empty :: TypeRepMap f
@@ -83,7 +84,7 @@ insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x = fromListPairs . addX . toPairList
   where
     pairX :: (Fingerprint, Any)
-    pairX@(fpX, _) = (calcFp x, unsafeCoerce x)
+    pairX@(fpX, _) = (calcFp x, toAny x)
 
     addX :: [(Fingerprint, Any)] -> [(Fingerprint, Any)]
     addX l = pairX : deleteByFst fpX l
@@ -105,6 +106,22 @@ True
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
 delete = fromListPairs . deleteByFst (typeFp @a) . toPairList
 {-# INLINE delete #-}
+
+{- | Map over elements.
+
+>>> let trMap = insert (Identity True) $ one (Identity 'a')
+>>> lookup @Bool trMap
+Just (Identity True)
+>>> lookup @Char trMap
+Just (Identity 'a')
+>>> let trMap2 = hoist ((:[]) . runIdentity) trMap
+>>> lookup @Bool trMap2
+Just [True]
+>>> lookup @Char trMap2
+Just "a"
+-}
+hoist :: (forall x. f x -> g x) -> TypeRepMap f -> TypeRepMap g
+hoist f (TypeRepMap as bs ans) = TypeRepMap as bs $ V.map (toAny . f . fromAny) ans
 
 {- | Returns 'True' if there exist value of given type.
 
@@ -166,6 +183,12 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
 -- Internal functions
 ----------------------------------------------------------------------------
 
+toAny :: f a -> Any
+toAny = unsafeCoerce
+
+fromAny :: Any -> f a
+fromAny = unsafeCoerce
+
 typeFp :: forall a . Typeable a => Fingerprint
 typeFp = typeRepFingerprint $ typeRep $ Proxy @a
 {-# INLINE typeFp #-}
@@ -204,7 +227,7 @@ fromList = fromListPairs . map (fp &&& an)
     fp (TF x) = calcFp x
 
     an :: TF f -> Any
-    an (TF x) = unsafeCoerce x
+    an (TF x) = toAny x
 
 fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
