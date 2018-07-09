@@ -36,7 +36,7 @@ module Data.TypeRep.Map
          -- * Helpful testing functions
        , TF (..)
        , fromList
-       , toFps
+       , toFingerprints
        ) where
 
 import Prelude hiding (lookup)
@@ -71,13 +71,12 @@ data TypeRepMap (f :: k -> Type) = TypeRepMap
 
 -- | Shows only 'Fingerprint's.
 instance Show (TypeRepMap f) where
-    show = show . toFps
+    show = show . toFingerprints
 
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
-toFps :: TypeRepMap f -> [Fingerprint]
-toFps TypeRepMap{..} = zipWith Fingerprint
-                               (GHC.toList fingerprintAs)
-                               (GHC.toList fingerprintBs)
+toFingerprints :: TypeRepMap f -> [Fingerprint]
+toFingerprints TypeRepMap{..} =
+    zipWith Fingerprint (GHC.toList fingerprintAs) (GHC.toList fingerprintBs)
 
 
 -- | Empty structure.
@@ -223,7 +222,7 @@ typeFp = typeRepFingerprint $ typeRep $ Proxy @a
 {-# INLINE typeFp #-}
 
 toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
-toPairList trMap = zip (toFps trMap) (GHC.toList $ anys trMap)
+toPairList trMap = zip (toFingerprints trMap) (GHC.toList $ anys trMap)
 
 deleteByFst :: Eq a => a -> [(a, b)] -> [(a, b)]
 deleteByFst x = filter ((/= x) . fst)
