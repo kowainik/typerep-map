@@ -51,9 +51,9 @@ import qualified Data.Vector.Unboxed as Unboxed
 
 -- | Map-like data structure that keeps types as keys.
 data TypeRepMap (f :: k -> Type) = TypeRepMap
-    { fingerprintAs :: Unboxed.Vector Word64
-    , fingerprintBs :: Unboxed.Vector Word64
-    , anys          :: V.Vector Any
+    { fingerprintAs :: {-# UNPACK #-} !(Unboxed.Vector Word64)
+    , fingerprintBs :: {-# UNPACK #-} !(Unboxed.Vector Word64)
+    , anys          :: {-# UNPACK #-} !(V.Vector Any)
     }
 
 -- | Shows only 'Fingerprint's.
