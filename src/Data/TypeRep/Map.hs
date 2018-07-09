@@ -4,11 +4,16 @@ module Data.TypeRep.Map
        ( -- * Map type
          TypeRepMap (..)
 
-         -- 'TypeRepMap' interface
+         -- * Construction
        , empty
        , one
+
+         -- * Modification
        , insert
        , delete
+       , hoist
+
+         -- * Query
        , lookup
        , member
        , size
