@@ -21,11 +21,11 @@ import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 import GHC.TypeLits
 
-import Data.TypeRep.CacheMap (TF (..), TypeRepMap (..), fromList, lookup)
+import Data.TypeRep.Map (TF (..), TypeRepMap (..), fromList, lookup)
 
 benchCacheMap :: Benchmark
 benchCacheMap = bgroup "vector optimal cache"
-   [ bench "lookup"     $ nf tenLookups bigMap
+   [ bench "lookup" $ nf tenLookups bigMap
    -- , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
    -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
    ]
