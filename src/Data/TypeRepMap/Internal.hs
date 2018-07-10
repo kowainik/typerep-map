@@ -12,33 +12,13 @@
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
--- | This module introduces the 'TypeRepMap' data structure and functions to work with it.
-
-module Data.TypeRep.Map
-       ( -- * Map type
-         TypeRepMap (..)
-
-         -- * Construction
-       , empty
-       , one
-
-         -- * Modification
-       , insert
-       , delete
-       , hoist
-       , unionWith
-       , union
-
-         -- * Query
-       , lookup
-       , member
-       , size
-
-         -- * Helpful testing functions
-       , TF (..)
-       , fromList
-       , toFingerprints
-       ) where
+-- | Internal API for 'TypeRepMap' and operations on it. The functions here do
+-- not have any stability guarantees and can change between minor versions.
+--
+-- If you need to use this module for purposes other than tests,
+-- create an issue.
+--
+module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
@@ -64,12 +44,34 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
 
--- | Map-like data structure that keeps types as keys.
-data TypeRepMap (f :: k -> Type) = TypeRepMap
-    { fingerprintAs :: {-# UNPACK #-} !(PrimArray Word64)
-    , fingerprintBs :: {-# UNPACK #-} !(PrimArray Word64)
-    , anys          :: {-# UNPACK #-} !(Array Any)
+{- |
+
+'TypeRepMap' is a heterogeneous data structure similar in its essence to
+'Data.Map.Map' with types as keys, where each value has the type of its key. In
+addition to that, each value is wrapped in an interpretation @f@.
+
+Here is an example of using 'Prelude.Maybe' as an interpretation, with a
+comparison to 'Data.Map.Map':
+
+@
+ 'Data.Map.Map' 'Prelude.String' ('Prelude.Maybe' 'Prelude.String')          'TypeRepMap' 'Prelude.Maybe'
+---------------------------       ---------------------
+ \"Int\"  -> Just \"5\"                 'Prelude.Int'  -> Just 5
+ \"Bool\" -> Just \"True\"              'Prelude.Bool' -> Just 'Prelude.True'
+ \"Char\" -> Nothing                  'Prelude.Char' -> Nothing
+@
+
+The runtime representation of 'TypeRepMap' is an array, not a tree. This makes
+'lookup' significantly more efficient.
+
+-}
+data TypeRepMap (f :: k -> Type) =
+  TypeRepMap
+    { fingerprintAs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ first components of key fingerprints
+    , fingerprintBs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ second components of key fingerprints
+    , anys          :: {-# UNPACK #-} !(Array Any)        -- ^ values stored in the map
     }
+  -- ^ an unsafe constructor for 'TypeRepMap'
 
 -- | Shows only 'Fingerprint's.
 instance Show (TypeRepMap f) where
@@ -92,17 +94,38 @@ toFingerprints :: TypeRepMap f -> [Fingerprint]
 toFingerprints TypeRepMap{..} =
     zipWith Fingerprint (GHC.toList fingerprintAs) (GHC.toList fingerprintBs)
 
--- | Empty structure.
+{- |
+
+A 'TypeRepMap' with no values stored in it.
+
+prop> size empty == 0
+prop> member @a empty == False
+
+-}
 empty :: TypeRepMap f
 empty = mempty
 {-# INLINE empty #-}
 
--- | Construct a 'TypeRepMap' with a single element.
+{- |
+
+Construct a 'TypeRepMap' with a single element.
+
+prop> size (one x) == 1
+prop> member @a (one (x :: f a)) == True
+
+-}
 one :: forall a f . Typeable a => f a -> TypeRepMap f
 one x = insert x empty
 {-# INLINE one #-}
 
--- | Inserts the value with its type as a key.
+{- |
+
+Insert a value into a 'TypeRepMap'.
+
+prop> size (insert v tm) >= size tm
+prop> member @a (insert (x :: f a) tm) == True
+
+-}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x = fromListPairs . addX . toPairList
   where
@@ -113,41 +136,45 @@ insert x = fromListPairs . addX . toPairList
     addX l = pairX : deleteByFst fpX l
 {-# INLINE insert #-}
 
--- Helper type to workaround some issues with types
+-- Extract the kind of a type. We use it to work around lack of syntax for
+-- inferred type variables (which are not subject to type applications).
 type KindOf (a :: k) = k
 
-{- | Deletes value from list.
+{- | Delete a value from a 'TypeRepMap'.
 
->>> let trMap = delete @Bool $ insert (Identity True) $ one (Identity 'a')
->>> size trMap
+prop> size (delete @a tm) <= size tm
+prop> member @a (delete @a tm) == False
+
+>>> tm = delete @Bool $ insert (Just True) $ one (Just 'a')
+>>> size tm
 1
->>> member @Bool trMap
+>>> member @Bool tm
 False
->>> member @Char trMap
+>>> member @Char tm
 True
 -}
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
 delete = fromListPairs . deleteByFst (typeFp @a) . toPairList
 {-# INLINE delete #-}
 
-{- | Map over elements.
+{- | Map over the elements of a 'TypeRepMap'.
 
->>> let trMap = insert (Identity True) $ one (Identity 'a')
->>> lookup @Bool trMap
+>>> tm = insert (Identity True) $ one (Identity 'a')
+>>> lookup @Bool tm
 Just (Identity True)
->>> lookup @Char trMap
+>>> lookup @Char tm
 Just (Identity 'a')
->>> let trMap2 = hoist ((:[]) . runIdentity) trMap
->>> lookup @Bool trMap2
+>>> tm2 = hoist ((:[]) . runIdentity) tm
+>>> lookup @Bool tm2
 Just [True]
->>> lookup @Char trMap2
+>>> lookup @Char tm2
 Just "a"
 -}
 hoist :: (forall x. f x -> g x) -> TypeRepMap f -> TypeRepMap g
 hoist f (TypeRepMap as bs ans) = TypeRepMap as bs $ mapArray' (toAny . f . fromAny) ans
 {-# INLINE hoist #-}
 
--- | The union with a combining function.
+-- | The union of two 'TypeRepMap's using a combining function.
 unionWith :: (forall x. f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 unionWith f m1 m2 = fromListPairs
                   $ Map.toList
@@ -159,13 +186,13 @@ unionWith f m1 m2 = fromListPairs
     combine a b = toAny $ f (fromAny a) (fromAny b)
 {-# INLINE unionWith #-}
 
--- | The (left-biased) union of two maps. It prefers the first map when
+-- | The (left-biased) union of two 'TypeRepMap's. It prefers the first map when
 -- duplicate keys are encountered, i.e. @'union' == 'unionWith' const@.
 union :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 union = unionWith const
 {-# INLINE union #-}
 
-{- | Returns 'True' if there exist value of given type.
+{- | Check if a value of the given type is present in a 'TypeRepMap'.
 
 >>> member @Char $ one (Identity 'a')
 True
@@ -173,14 +200,14 @@ True
 False
 -}
 member :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> Bool
-member trMap = case lookup @a trMap of
+member tm = case lookup @a tm of
     Nothing -> False
     Just _  -> True
 {-# INLINE member #-}
 
-{- | Looks up the value at the type.
+{- | Lookup a value of the given type in a 'TypeRepMap'.
 
->>> let x = lookup $ insert (Identity (11 :: Int)) empty
+>>> x = lookup $ insert (Identity (11 :: Int)) empty
 >>> x :: Maybe (Identity Int)
 Just (Identity 11)
 >>> x :: Maybe (Identity ())
@@ -193,7 +220,7 @@ lookup tVect = fromAny . (anys tVect `indexArray`)
                                   (fingerprintBs tVect)
 {-# INLINE lookup #-}
 
--- | Returns the size of the 'TypeRepMap'.
+-- | Get the amount of elements in a 'TypeRepMap'.
 size :: TypeRepMap f -> Int
 size = sizeofPrimArray . fingerprintAs
 {-# INLINE size #-}
@@ -236,7 +263,7 @@ typeFp = typeRepFingerprint $ typeRep $ Proxy @a
 {-# INLINE typeFp #-}
 
 toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
-toPairList trMap = zip (toFingerprints trMap) (GHC.toList $ anys trMap)
+toPairList tm = zip (toFingerprints tm) (GHC.toList $ anys tm)
 
 deleteByFst :: Eq a => a -> [(a, b)] -> [(a, b)]
 deleteByFst x = filter ((/= x) . fst)

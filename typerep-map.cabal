@@ -1,7 +1,21 @@
 name:                typerep-map
 version:             0.1.0
-synopsis:            Efficient implementation of data type with types as keys
-description:         See README.md for more details.
+synopsis:            Efficient implementation of a dependent map with types as keys
+description:
+    A dependent map from type representations to values of these types.
+    .
+    Here is an illustration of such a map:
+    .
+    >     TMap
+    > ---------------
+    >  Int  -> 5
+    >  Bool -> True
+    >  Char -> 'x'
+    .
+    In addition to @TMap@, we provide @TypeRepMap@ parametrized by a
+    @vinyl@-style interpretation. This data structure is equivalent to @DMap
+    TypeRep@, but with significantly more efficient lookups.
+
 homepage:            https://github.com/kowainik/typerep-map
 bug-reports:         https://github.com/kowainik/typerep-map/issues
 license:             MIT
@@ -23,8 +37,9 @@ source-repository head
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.TypeRep.Map
-                       Data.TypeRep.TMap
+  exposed-modules:     Data.TMap
+                       Data.TypeRepMap
+                       Data.TypeRepMap.Internal
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5
                      , containers

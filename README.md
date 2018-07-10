@@ -4,36 +4,38 @@
 [![Build status](https://secure.travis-ci.org/kowainik/typerep-map.svg)](https://travis-ci.org/kowainik/typerep-map)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/vrom911/typerep-map/blob/master/LICENSE)
 
-`typerep-map` introduces `TypeRepMap` — data structure like [`Map`](http://hackage.haskell.org/package/containers-0.6.0.1/docs/Data-Map-Lazy.html#t:Map), but where types serve as keys, and values have the types specified in the corresponding key spots.
+`typerep-map` introduces `TMap` and `TypeRepMap` — data structures like [`Map`](http://hackage.haskell.org/package/containers-0.6.0.1/docs/Data-Map-Lazy.html#t:Map), but where types serve as keys, and values have the types specified in the corresponding key spots.
 
 ## Usage example
 
 ```haskell
-ghci> let typeRepMap = insert (Identity True) $ one (Identity (42 :: Int))
+ghci> import Data.TMap
 
-ghci> size typeRepMap
+ghci> tm = insert True $ one (42 :: Int)
+
+ghci> size tm
 2
 
-ghci> let res = lookup typeRepMap
+ghci> res = lookup tm
 
-ghci> res :: Maybe (Identity Int)
-Just (Identity 42)
+ghci> res :: Maybe Int
+Just 42
 
-ghci> res :: Maybe (Identity Bool)
-Just (Identity True)
+ghci> res :: Maybe Bool
+Just True
 
-ghci> res :: Maybe (Identity String)
+ghci> res :: Maybe String
 Nothing
 
-ghci> lookup (insert (Identity "hello") typeRepMap) :: Maybe (Identity String)
-Just (Identity "hello")
+ghci> lookup (insert "hello" tm) :: Maybe String
+Just "hello"
 
-ghci> member @Int typeRepMap
+ghci> member @Int tm
 True
 
-ghci> let trMap = delete @Int typeRepMap
+ghci> tm' = delete @Int tm
 
-ghci> member @Int trMap
+ghci> member @Int tm'
 False
 ```
 
