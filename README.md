@@ -2,8 +2,6 @@
 
 [![Hackage](https://img.shields.io/hackage/v/typerep-map.svg)](https://hackage.haskell.org/package/typerep-map)
 [![Build status](https://secure.travis-ci.org/kowainik/typerep-map.svg)](https://travis-ci.org/kowainik/typerep-map)
-[![Stackage LTS](http://stackage.org/package/typerep-map/badge/lts)](http://stackage.org/lts/package/typerep-map)
-[![Stackage Nightly](http://stackage.org/package/typerep-map/badge/nightly)](http://stackage.org/nightly/package/typerep-map)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/vrom911/typerep-map/blob/master/LICENSE)
 
 `typerep-map` introduces `TypeRepMap` — data structure like [`Map`](http://hackage.haskell.org/package/containers-0.6.0.1/docs/Data-Map-Lazy.html#t:Map), but where types serve as keys, and values have the types specified in the corresponding key spots.
