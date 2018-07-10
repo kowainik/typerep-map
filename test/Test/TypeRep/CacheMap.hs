@@ -6,7 +6,7 @@ import Data.Functor.Identity (Identity (..))
 import Test.Tasty.Hspec (Spec, describe, it, shouldBe)
 
 import Data.TypeRep.Map (TF (..), fromList)
-import Data.TypeRep.TMap (TMap, insert, lookup, one, size, union)
+import Data.TypeRep.TMap (TMap, empty, insert, lookup, one, size, union)
 
 -- Simple test for 'lookup', 'insert' and 'size' functions.
 spec_insertLookup :: Spec
@@ -19,11 +19,11 @@ spec_insertLookup = do
 
     describe "Size Test" $ do
         it "is empty" $
-            size mempty `shouldBe` 0
+            size empty `shouldBe` 0
         it "is of size 1 when 1 element inserted" $
             size (one 'a') `shouldBe` 1
         it "doesn't increase size when element of the same type is added" $
-            size (insert 'b' $ insert 'a' mempty) `shouldBe` 1
+            size (insert 'b' $ insert 'a' empty) `shouldBe` 1
         it "returns 10 when 10 different types are inserted" $
             size mapOf10 `shouldBe` 10
 
@@ -45,4 +45,4 @@ mapOf10 = insert True
         $ insert "aaa"
         $ insert (Just 'a')
         $ insert 'a'
-        $ insert (11 :: Int) mempty
+        $ insert (11 :: Int) empty

@@ -8,6 +8,7 @@ module Data.TypeRep.TMap
          TMap
 
          -- * Construction
+       , empty
        , one
 
          -- * Modification
@@ -33,6 +34,11 @@ import qualified Data.TypeRep.Map as TR
 
 -- | 'TR.TypeRepMap' parametrized by 'Identity'.
 type TMap = TR.TypeRepMap Identity
+
+-- | Similar to 'TR.empty' but for 'TMap'.
+empty :: TMap
+empty = TR.empty
+{-# INLINE empty #-}
 
 -- | Similar to 'TR.one' but for 'TMap'.
 one :: forall a . Typeable a => a -> TMap

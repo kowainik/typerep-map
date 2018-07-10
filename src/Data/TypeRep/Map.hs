@@ -19,6 +19,7 @@ module Data.TypeRep.Map
          TypeRepMap (..)
 
          -- * Construction
+       , empty
        , one
 
          -- * Modification
@@ -91,9 +92,14 @@ toFingerprints :: TypeRepMap f -> [Fingerprint]
 toFingerprints TypeRepMap{..} =
     zipWith Fingerprint (GHC.toList fingerprintAs) (GHC.toList fingerprintBs)
 
+-- | Empty structure.
+empty :: TypeRepMap f
+empty = mempty
+{-# INLINE empty #-}
+
 -- | Construct a 'TypeRepMap' with a single element.
 one :: forall a f . Typeable a => f a -> TypeRepMap f
-one x = insert x mempty
+one x = insert x empty
 {-# INLINE one #-}
 
 -- | Inserts the value with its type as a key.
@@ -174,7 +180,7 @@ member trMap = case lookup @a trMap of
 
 {- | Looks up the value at the type.
 
->>> let x = lookup $ insert (Identity (11 :: Int)) mempty
+>>> let x = lookup $ insert (Identity (11 :: Int)) empty
 >>> x :: Maybe (Identity Int)
 Just (Identity 11)
 >>> x :: Maybe (Identity ())
