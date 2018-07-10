@@ -10,7 +10,7 @@ module Test.TypeRep.MapProperty where
 import Prelude hiding (lookup)
 
 import Data.Proxy (Proxy (..))
-import Data.Semigroup (Semigroup)
+import Data.Semigroup (Semigroup (..))
 import GHC.Stack (HasCallStack)
 import GHC.TypeLits (Nat, SomeNat (..), someNatVal)
 import Hedgehog (MonadGen, PropertyT, forAll, property, (===))
