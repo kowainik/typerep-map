@@ -21,7 +21,7 @@ import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 import GHC.TypeLits
 
-import Data.TypeRep.Map (TF (..), TypeRepMap (..), fromList, lookup)
+import Data.TypeRepMap.Internal (TF (..), TypeRepMap (..), fromList, lookup)
 
 benchCacheMap :: Benchmark
 benchCacheMap = bgroup "vector optimal cache"

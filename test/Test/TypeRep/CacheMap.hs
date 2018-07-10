@@ -5,8 +5,8 @@ import Prelude hiding (lookup)
 import Data.Functor.Identity (Identity (..))
 import Test.Tasty.Hspec (Spec, describe, it, shouldBe)
 
-import Data.TypeRep.Map (TF (..), fromList)
-import Data.TypeRep.TMap (TMap, empty, insert, lookup, one, size, union)
+import Data.TypeRepMap.Internal (TF (..), fromList)
+import Data.TMap (TMap, empty, insert, lookup, one, size, union)
 
 -- Simple test for 'lookup', 'insert' and 'size' functions.
 spec_insertLookup :: Spec

@@ -17,7 +17,7 @@ import Hedgehog (MonadGen, PropertyT, forAll, property, (===))
 import Test.Tasty (TestName, TestTree)
 import Test.Tasty.Hedgehog (testProperty)
 
-import Data.TypeRep.Map (TF (..), TypeRepMap (..), delete, fromList, insert, lookup, member)
+import Data.TypeRepMap.Internal (TF (..), TypeRepMap (..), delete, fromList, insert, lookup, member)
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
