@@ -39,7 +39,7 @@ False
 
 ## Benchmarks
 
-Tables below contain comparision with `DMap TypeRep` of `lookup` operation
+Tables below contain comparision with `DMap TypeRep` of ten `lookup` operations
 on structure with size `10^4`:
 
 |                | ghc-8.2.2 | ghc-8.4.3 |
