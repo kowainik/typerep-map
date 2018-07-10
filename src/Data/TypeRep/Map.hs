@@ -2,6 +2,7 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE InstanceSigs        #-}
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE MagicHash           #-}
 {-# LANGUAGE PolyKinds           #-}
@@ -18,7 +19,6 @@ module Data.TypeRep.Map
          TypeRepMap (..)
 
          -- * Construction
-       , empty
        , one
 
          -- * Modification
@@ -50,6 +50,7 @@ import Data.Maybe (fromJust)
 import Data.Primitive.Array (Array, indexArray, mapArray')
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Proxy (Proxy (..))
+import Data.Semigroup ((<>))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (inline, sortWith)
@@ -73,19 +74,26 @@ data TypeRepMap (f :: k -> Type) = TypeRepMap
 instance Show (TypeRepMap f) where
     show = show . toFingerprints
 
+-- | Uses 'union' to combine 'TypeRepMap's.
+instance Semigroup (TypeRepMap f) where
+    (<>) :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+    (<>) = union
+    {-# INLINE (<>) #-}
+
+instance Monoid (TypeRepMap f) where
+    mempty = TypeRepMap mempty mempty mempty
+    mappend = (<>)
+    {-# INLINE mempty #-}
+    {-# INLINE mappend #-}
+
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFingerprints :: TypeRepMap f -> [Fingerprint]
 toFingerprints TypeRepMap{..} =
     zipWith Fingerprint (GHC.toList fingerprintAs) (GHC.toList fingerprintBs)
 
-
--- | Empty structure.
-empty :: TypeRepMap f
-empty = TypeRepMap mempty mempty mempty
-
 -- | Construct a 'TypeRepMap' with a single element.
 one :: forall a f . Typeable a => f a -> TypeRepMap f
-one x = insert x empty
+one x = insert x mempty
 {-# INLINE one #-}
 
 -- | Inserts the value with its type as a key.
@@ -166,7 +174,7 @@ member trMap = case lookup @a trMap of
 
 {- | Looks up the value at the type.
 
->>> let x = lookup $ insert (Identity (11 :: Int)) empty
+>>> let x = lookup $ insert (Identity (11 :: Int)) mempty
 >>> x :: Maybe (Identity Int)
 Just (Identity 11)
 >>> x :: Maybe (Identity ())

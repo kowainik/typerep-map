@@ -1,5 +1,5 @@
 name:                typerep-map
-version:             1.0
+version:             0.1.0
 synopsis:            Efficient implementation of data type with types as keys
 description:         See README.md for more details.
 homepage:            https://github.com/kowainik/typerep-map
@@ -26,10 +26,10 @@ library
   exposed-modules:     Data.TypeRep.Map
                        Data.TypeRep.TMap
   ghc-options:         -Wall
-  build-depends:       base
+  build-depends:       base >= 4.9 && < 5
                      , containers
                      , ghc-prim
-                     , primitive
+                     , primitive >= 0.6.4
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables
