@@ -9,7 +9,7 @@ cache:
   - "$HOME/.cabal"
   - "$HOME/.ghc"
   - "$HOME/.stack"
-  - "$HOME/build/kowainik/summoner/.stack-work"
+  - "$HOME/build/kowainik/typerep-map/.stack-work"
 
 matrix:
 
