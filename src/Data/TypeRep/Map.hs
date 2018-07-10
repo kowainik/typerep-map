@@ -2,6 +2,7 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE InstanceSigs        #-}
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE MagicHash           #-}
 {-# LANGUAGE PolyKinds           #-}
@@ -50,6 +51,7 @@ import Data.Maybe (fromJust)
 import Data.Primitive.Array (Array, indexArray, mapArray')
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Proxy (Proxy (..))
+import Data.Semigroup (Semigroup (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (inline, sortWith)
@@ -73,15 +75,27 @@ data TypeRepMap (f :: k -> Type) = TypeRepMap
 instance Show (TypeRepMap f) where
     show = show . toFingerprints
 
+-- | Uses 'union' to combine 'TypeRepMap's.
+instance Semigroup (TypeRepMap f) where
+    (<>) :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+    (<>) = union
+    {-# INLINE (<>) #-}
+
+instance Monoid (TypeRepMap f) where
+    mempty = TypeRepMap mempty mempty mempty
+    mappend = (<>)
+    {-# INLINE mempty #-}
+    {-# INLINE mappend #-}
+
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFingerprints :: TypeRepMap f -> [Fingerprint]
 toFingerprints TypeRepMap{..} =
     zipWith Fingerprint (GHC.toList fingerprintAs) (GHC.toList fingerprintBs)
 
-
 -- | Empty structure.
 empty :: TypeRepMap f
-empty = TypeRepMap mempty mempty mempty
+empty = mempty
+{-# INLINE empty #-}
 
 -- | Construct a 'TypeRepMap' with a single element.
 one :: forall a f . Typeable a => f a -> TypeRepMap f
