@@ -25,7 +25,8 @@ maintainer:          xrom.xkov@gmail.com
 copyright:           2017-2018 Kowainik
 category:            Data, Data Structures, Types
 build-type:          Simple
-extra-source-files:  README.md
+extra-doc-files:     README.md
+                   , CHANGELOG.md
 cabal-version:       2.0
 tested-with:         GHC == 8.0.2
                    , GHC == 8.2.2
