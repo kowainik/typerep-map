@@ -21,7 +21,6 @@ import Prelude hiding (lookup)
 
 import Control.DeepSeq (rnf)
 import Control.Exception
-import Data.Functor.Identity (Identity (..))
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Type.Equality ((:~:) (..))
@@ -34,6 +33,8 @@ import Data.Dependent.Map (DMap, empty, insert, keys, lookup)
 import Data.GADT.Compare (GCompare (..), GEq (..), GOrdering (..))
 import Data.Some (Some (This))
 
+type TypeRepMap = DMap TypeRep
+
 benchDMap :: Benchmark
 benchDMap = bgroup "dependent map"
    [ bench "lookup"     $ nf tenLookups bigMap
@@ -41,29 +42,29 @@ benchDMap = bgroup "dependent map"
    -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
    ]
 
-tenLookups :: DMap TypeRep Identity
+tenLookups :: TypeRepMap (Proxy :: Nat -> *)
            -> ( Proxy 10, Proxy 20, Proxy 30, Proxy 40
               , Proxy 50, Proxy 60, Proxy 70, Proxy 80
               )
 tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
   where
     lp :: forall (a :: Nat) . Typeable a => Proxy a
-    lp = runIdentity $ fromJust $ lookup (typeRep @(Proxy a)) tmap
+    lp = fromJust $ lookup (typeRep @a) tmap
 
 -- TypeRepMap of 10000 elements
-bigMap :: DMap TypeRep Identity
+bigMap :: TypeRepMap (Proxy :: Nat -> *)
 bigMap = buildBigMap 10000 (Proxy :: Proxy 0) empty
 
 buildBigMap :: forall a . (KnownNat a)
             => Int
             -> Proxy (a :: Nat)
-            -> DMap TypeRep Identity
-            -> DMap TypeRep Identity
-buildBigMap 1 x = insert (typeRep @(Proxy a)) $ Identity x
-buildBigMap n x = insert (typeRep @(Proxy a)) (Identity x)
+            -> TypeRepMap (Proxy :: Nat -> *)
+            -> TypeRepMap (Proxy :: Nat -> *)
+buildBigMap 1 x = insert (typeRep @a) x
+buildBigMap n x = insert (typeRep @a) x
                 . buildBigMap (n - 1) (Proxy @(a + 1))
 
-rknf :: DMap TypeRep f -> ()
+rknf :: TypeRepMap f -> ()
 rknf = rnf . map (\(This t) -> typeRepFingerprint t) . keys
 
 prepareBenchDMap :: IO ()
