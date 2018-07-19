@@ -34,7 +34,7 @@ import Data.Proxy (Proxy (..))
 import Data.Semigroup (Semigroup (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
-import GHC.Exts (inline, sortWith)
+import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import GHC.Prim (eqWord#, ltWord#)
 import GHC.Word (Word64 (..))
@@ -283,20 +283,31 @@ data TF f where
 instance Show (TF f) where
     show (TF tf) = show $ calcFp tf
 
-{- | Creates 'TypeRepMap' from a list of 'TF's.
+{- |
+
+prop> fromList . toList == 'id'
+
+Creates 'TypeRepMap' from a list of 'TF's.
 
 >>> size $ fromList [TF $ Identity True, TF $ Identity 'a']
 2
 
--}
-fromList :: forall f . [TF f] -> TypeRepMap f
-fromList = fromListPairs . map (fp &&& an)
-  where
-    fp :: TF f -> Fingerprint
-    fp (TF x) = calcFp x
 
-    an :: TF f -> Any
-    an (TF x) = toAny x
+-}
+instance IsList (TypeRepMap f) where
+    type Item (TypeRepMap f) = TF f
+
+    fromList :: forall p . [TF p] -> TypeRepMap p
+    fromList = fromListPairs . map (fp &&& an)
+      where
+        fp :: TF p -> Fingerprint
+        fp (TF x) = calcFp x
+
+        an :: TF p -> Any
+        an (TF x) = toAny x
+
+    toList :: forall p . TypeRepMap p -> [TF p]
+    toList TypeRepMap{..} = undefined
 
 fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
