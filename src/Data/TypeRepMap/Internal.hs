@@ -9,6 +9,7 @@
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeInType          #-}
+{-# LANGUAGE ViewPatterns        #-}
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
@@ -29,21 +30,19 @@ import Data.List (nubBy)
 import Data.Maybe (fromJust)
 import Data.Primitive.Array (Array, indexArray, mapArray')
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
-import Data.Proxy (Proxy (..))
 import Data.Semigroup (Semigroup (..))
-import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import GHC.Prim (eqWord#, ltWord#)
 import GHC.Word (Word64 (..))
-import Type.Reflection (SomeTypeRep (..), withTypeable)
+import Type.Reflection (Typeable, typeRep, withTypeable)
+import Type.Reflection.Unsafe (typeRepFingerprint)
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
-import qualified Type.Reflection as TR
 
 {- |
 
@@ -132,7 +131,7 @@ insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x = fromTriples . addX . toTriples
   where
     tripleX :: (Fingerprint, Any, Any)
-    tripleX@(fpX, _, _) = (calcFp x, toAny x, unsafeCoerce $ typeRep (Proxy @a))
+    tripleX@(fpX, _, _) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
 
     addX :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
     addX l = tripleX : deleteByFst fpX l
@@ -175,6 +174,11 @@ Just "a"
 hoist :: (forall x. f x -> g x) -> TypeRepMap f -> TypeRepMap g
 hoist f (TypeRepMap as bs ans ks) = TypeRepMap as bs (mapArray' (toAny . f . fromAny) ans) ks
 {-# INLINE hoist #-}
+
+hoistA :: (Applicative t) => (forall x. f x -> t (g x)) -> TypeRepMap f -> t (TypeRepMap g)
+hoistA f (TypeRepMap as bs (toList -> ans) ks) = (\l -> TypeRepMap as bs (fromList $ map toAny l) ks)
+    <$> traverse (f . fromAny) ans
+{-# INLINE hoistA #-}
 
 -- | The union of two 'TypeRepMap's using a combining function.
 unionWith :: (forall x. f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
@@ -267,7 +271,7 @@ fromAny :: Any -> f a
 fromAny = unsafeCoerce
 
 typeFp :: forall a . Typeable a => Fingerprint
-typeFp = typeRepFingerprint $ typeRep $ Proxy @a
+typeFp = typeRepFingerprint $ typeRep @a
 {-# INLINE typeFp #-}
 
 toTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
@@ -292,7 +296,7 @@ data WrapTypeable f where
     WrapTypeable :: Typeable a => f a -> WrapTypeable f
 
 instance Show (WrapTypeable f) where
-    show (WrapTypeable tf) = show $ calcFp tf
+    show (WrapTypeable (_ :: f a)) = show $ calcFp @a
 
 {- |
 
@@ -312,29 +316,22 @@ instance IsList (TypeRepMap f) where
     fromList = fromTriples . map (\x -> (fp x, an x, k x))
       where
         fp :: WrapTypeable f -> Fingerprint
-        fp (WrapTypeable x) = calcFp x
+        fp (WrapTypeable (_ :: f a)) = calcFp @a
 
         an :: WrapTypeable f -> Any
         an (WrapTypeable x) = toAny x
 
         k :: WrapTypeable f -> Any
-        k (WrapTypeable (_ :: f a)) = unsafeCoerce $ typeRep (Proxy @a)
+        k (WrapTypeable (_ :: f a)) = unsafeCoerce $ typeRep @a
 
     toList :: TypeRepMap f -> [WrapTypeable f]
     toList = map toWrapTypeable . toTriples
       where
         toWrapTypeable :: (Fingerprint, Any, Any) -> WrapTypeable f
-        toWrapTypeable (_, an, k) = case unsafeCoerce k of
-            SomeTypeRep tr -> WrapTypeable $ withTypeRep tr an
+        toWrapTypeable (_, an, k) = withTypeable (unsafeCoerce k) $ fromAny an
 
-        withTypeRep :: forall a . (Typeable a) => TR.TypeRep a -> Any -> f a
-        withTypeRep tr a = withTypeable tr (fromAny a)
-
-fromF :: Typeable a => f a -> Proxy a
-fromF _ = Proxy
-
-calcFp :: Typeable a => f a -> Fingerprint
-calcFp = typeRepFingerprint . typeRep . fromF
+calcFp :: forall a . Typeable a => Fingerprint
+calcFp = typeRepFingerprint $ typeRep @a
 
 fromTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
 fromTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans) (GHC.fromList ks)
