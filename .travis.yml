@@ -15,17 +15,6 @@ matrix:
 
   include:
 
-  - ghc: 8.0.2
-    env: GHCVER='8.0.2' CABALVER='head' ALLOWNEWER='--allow-newer'
-    os: linux
-    addons:
-      apt:
-        sources:
-        - hvr-ghc
-        packages:
-        - ghc-8.0.2
-        - cabal-install-head
-
   - ghc: 8.2.2
     env: GHCVER='8.2.2' CABALVER='head'
     os: linux

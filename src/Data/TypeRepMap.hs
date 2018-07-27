@@ -52,6 +52,7 @@ module Data.TypeRepMap
        , insert
        , delete
        , hoist
+       , hoistA
        , unionWith
        , union
 
@@ -60,6 +61,8 @@ module Data.TypeRepMap
        , member
        , size
 
+         -- * 'IsList'
+       , WrapTypeable (..)
        ) where
 
 import Data.TypeRepMap.Internal
