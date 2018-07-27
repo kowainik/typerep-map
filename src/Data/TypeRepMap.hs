@@ -53,6 +53,7 @@ module Data.TypeRepMap
        , delete
        , hoist
        , hoistA
+       , hoistWithKey
        , unionWith
        , union
 

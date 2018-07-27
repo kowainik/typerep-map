@@ -23,6 +23,7 @@ module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
+import Control.Monad.Zip (mzip)
 import Data.Function (on)
 import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
@@ -36,7 +37,7 @@ import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import GHC.Prim (eqWord#, ltWord#)
 import GHC.Word (Word64 (..))
-import Type.Reflection (Typeable, typeRep, withTypeable)
+import Type.Reflection (TypeRep, Typeable, typeRep, withTypeable)
 import Type.Reflection.Unsafe (typeRepFingerprint)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -179,6 +180,16 @@ hoistA :: (Applicative t) => (forall x. f x -> t (g x)) -> TypeRepMap f -> t (Ty
 hoistA f (TypeRepMap as bs (toList -> ans) ks) = (\l -> TypeRepMap as bs (fromList $ map toAny l) ks)
     <$> traverse (f . fromAny) ans
 {-# INLINE hoistA #-}
+
+hoistWithKey :: forall f g. (forall x. Typeable x => f x -> g x) -> TypeRepMap f -> TypeRepMap g
+hoistWithKey f (TypeRepMap as bs ans ks) = TypeRepMap as bs newAns ks
+  where
+    newAns = mapArray' mapAns (mzip ans ks)
+    mapAns (a, k) = toAny $ withTr (unsafeCoerce k) $ fromAny a
+
+    withTr :: forall x. TypeRep x -> f x -> g x
+    withTr t = withTypeable t f
+{-# INLINE hoistWithKey #-}
 
 -- | The union of two 'TypeRepMap's using a combining function.
 unionWith :: (forall x. f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f

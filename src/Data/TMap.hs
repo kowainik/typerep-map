@@ -33,6 +33,7 @@ module Data.TMap
        , delete
        , unionWith
        , union
+       , map
 
          -- * Query
        , lookup
@@ -40,7 +41,7 @@ module Data.TMap
        , size
        ) where
 
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, map)
 
 import Data.Functor.Identity (Identity (..))
 import Data.Typeable (Typeable)
@@ -146,3 +147,8 @@ member = F.member @a @Identity
 size :: TMap -> Int
 size = F.size
 {-# INLINE size #-}
+
+-- | Map a function over the values.
+map :: (forall a. Typeable a => a -> a) -> TMap -> TMap
+map f = F.hoistWithKey (fmap @Identity f)
+{-# INLINE map #-}
