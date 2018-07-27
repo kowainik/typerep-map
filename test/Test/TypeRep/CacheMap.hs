@@ -3,19 +3,20 @@ module Test.TypeRep.CacheMap where
 import Prelude hiding (lookup)
 
 import Data.Functor.Identity (Identity (..))
+import GHC.Exts (fromList)
 import Test.Tasty.Hspec (Spec, describe, it, shouldBe)
 
-import Data.TypeRepMap.Internal (TF (..), fromList)
 import Data.TMap (TMap, empty, insert, lookup, one, size, union)
+import Data.TypeRepMap.Internal (WrapTypeable (..))
 
 -- Simple test for 'lookup', 'insert' and 'size' functions.
 spec_insertLookup :: Spec
 spec_insertLookup = do
     describe "Lookup Test" $ do
         it "returns the inserted element" $
-            lookup (fromList [TF $ Identity 'a']) `shouldBe` Just 'a'
+            lookup (fromList [WrapTypeable $ Identity 'a']) `shouldBe` Just 'a'
         it "returns the second inserted value of the same type" $
-            lookup (fromList [TF (Identity 'b'), TF (Identity 'a')]) `shouldBe` Just 'b'
+            lookup (fromList [WrapTypeable (Identity 'b'), WrapTypeable (Identity 'a')]) `shouldBe` Just 'b'
 
     describe "Size Test" $ do
         it "is empty" $
@@ -28,7 +29,8 @@ spec_insertLookup = do
             size mapOf10 `shouldBe` 10
 
     describe "Union test" $ do
-        let m = fromList [TF $ Identity 'a', TF $ Identity True] `union` fromList [TF $ Identity 'b']
+        let m = fromList [WrapTypeable $ Identity 'a', WrapTypeable $ Identity True] `union`
+                fromList [WrapTypeable $ Identity 'b']
         it "lookup works on union as expected" $ do
             lookup m `shouldBe` Just 'a'
             lookup m `shouldBe` Just True

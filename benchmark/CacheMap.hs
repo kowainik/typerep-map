@@ -19,9 +19,10 @@ import Prelude hiding (lookup)
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
+import GHC.Exts (fromList)
 import GHC.TypeLits
 
-import Data.TypeRepMap.Internal (TF (..), TypeRepMap (..), fromList, lookup)
+import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), lookup)
 
 benchCacheMap :: Benchmark
 benchCacheMap = bgroup "vector optimal cache"
@@ -46,7 +47,7 @@ bigMap = fromList $ buildBigMap 10000 (Proxy :: Proxy 0) []
 buildBigMap :: forall a . (KnownNat a)
             => Int
             -> Proxy (a :: Nat)
-            -> [TF (Proxy :: Nat -> *)]
-            -> [TF (Proxy :: Nat -> *)]
-buildBigMap 1 x = (TF x :)
-buildBigMap n x = (TF x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
+            -> [WrapTypeable (Proxy :: Nat -> *)]
+            -> [WrapTypeable (Proxy :: Nat -> *)]
+buildBigMap 1 x = (WrapTypeable x :)
+buildBigMap n x = (WrapTypeable x :) . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))

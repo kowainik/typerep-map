@@ -22,7 +22,6 @@ module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
-import Control.Arrow ((&&&))
 import Data.Function (on)
 import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
@@ -38,11 +37,13 @@ import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import GHC.Prim (eqWord#, ltWord#)
 import GHC.Word (Word64 (..))
+import Type.Reflection (SomeTypeRep (..), withTypeable)
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
+import qualified Type.Reflection as TR
 
 {- |
 
@@ -70,6 +71,7 @@ data TypeRepMap (f :: k -> Type) =
     { fingerprintAs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ first components of key fingerprints
     , fingerprintBs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ second components of key fingerprints
     , anys          :: {-# UNPACK #-} !(Array Any)        -- ^ values stored in the map
+    , keys          :: {-# UNPACK #-} !(Array Any)        -- ^ typerep keys
     }
   -- ^ an unsafe constructor for 'TypeRepMap'
 
@@ -84,7 +86,7 @@ instance Semigroup (TypeRepMap f) where
     {-# INLINE (<>) #-}
 
 instance Monoid (TypeRepMap f) where
-    mempty = TypeRepMap mempty mempty mempty
+    mempty = TypeRepMap mempty mempty mempty mempty
     mappend = (<>)
     {-# INLINE mempty #-}
     {-# INLINE mappend #-}
@@ -127,13 +129,13 @@ prop> member @a (insert (x :: f a) tm) == True
 
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
-insert x = fromListPairs . addX . toPairList
+insert x = fromTriples . addX . toTriples
   where
-    pairX :: (Fingerprint, Any)
-    pairX@(fpX, _) = (calcFp x, toAny x)
+    tripleX :: (Fingerprint, Any, Any)
+    tripleX@(fpX, _, _) = (calcFp x, toAny x, unsafeCoerce $ typeRep (Proxy @a))
 
-    addX :: [(Fingerprint, Any)] -> [(Fingerprint, Any)]
-    addX l = pairX : deleteByFst fpX l
+    addX :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
+    addX l = tripleX : deleteByFst fpX l
 {-# INLINE insert #-}
 
 -- Extract the kind of a type. We use it to work around lack of syntax for
@@ -154,7 +156,7 @@ False
 True
 -}
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
-delete = fromListPairs . deleteByFst (typeFp @a) . toPairList
+delete = fromTriples . deleteByFst (typeFp @a) . toTriples
 {-# INLINE delete #-}
 
 {- | Map over the elements of a 'TypeRepMap'.
@@ -171,19 +173,25 @@ Just [True]
 Just "a"
 -}
 hoist :: (forall x. f x -> g x) -> TypeRepMap f -> TypeRepMap g
-hoist f (TypeRepMap as bs ans) = TypeRepMap as bs $ mapArray' (toAny . f . fromAny) ans
+hoist f (TypeRepMap as bs ans ks) = TypeRepMap as bs (mapArray' (toAny . f . fromAny) ans) ks
 {-# INLINE hoist #-}
 
 -- | The union of two 'TypeRepMap's using a combining function.
 unionWith :: (forall x. f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
-unionWith f m1 m2 = fromListPairs
-                  $ Map.toList
+unionWith f m1 m2 = fromTriples
+                  $ toTripleList
                   $ Map.unionWith combine
-                                  (Map.fromList $ toPairList m1)
-                                  (Map.fromList $ toPairList m2)
+                                  (fromTripleList $ toTriples m1)
+                                  (fromTripleList $ toTriples m2)
   where
-    combine :: Any -> Any -> Any
-    combine a b = toAny $ f (fromAny a) (fromAny b)
+    combine :: (Any, Any) -> (Any, Any) -> (Any, Any)
+    combine (av, ak) (bv, _) = (toAny $ f (fromAny av) (fromAny bv), ak)
+
+    fromTripleList :: Ord a => [(a, b, c)] -> Map.Map a (b, c)
+    fromTripleList = Map.fromList . map (\(a, b, c) -> (a, (b, c)))
+
+    toTripleList :: Map.Map a (b, c) -> [(a, b, c)]
+    toTripleList = map (\(a, (b, c)) -> (a, b, c)) . Map.toList
 {-# INLINE unionWith #-}
 
 -- | The (left-biased) union of two 'TypeRepMap's. It prefers the first map when
@@ -262,52 +270,65 @@ typeFp :: forall a . Typeable a => Fingerprint
 typeFp = typeRepFingerprint $ typeRep $ Proxy @a
 {-# INLINE typeFp #-}
 
-toPairList :: TypeRepMap f -> [(Fingerprint, Any)]
-toPairList tm = zip (toFingerprints tm) (GHC.toList $ anys tm)
+toTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
+toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ anys tm) (GHC.toList $ keys tm)
 
-deleteByFst :: Eq a => a -> [(a, b)] -> [(a, b)]
-deleteByFst x = filter ((/= x) . fst)
+deleteByFst :: Eq a => a -> [(a, b, c)] -> [(a, b, c)]
+deleteByFst x = filter ((/= x) . fst3)
 
-nubByFst :: (Eq a) => [(a, b)] -> [(a, b)]
-nubByFst = nubBy ((==) `on` fst)
+nubByFst :: (Eq a) => [(a, b, c)] -> [(a, b, c)]
+nubByFst = nubBy ((==) `on` fst3)
+
+fst3 :: (a, b, c) -> a
+fst3 (a, _, _) = a
 
 ----------------------------------------------------------------------------
 -- Functions for testing and benchmarking
 ----------------------------------------------------------------------------
 
 -- | Existential wrapper around 'Typeable' indexed by @f@ type parameter.
--- Useful for 'TypeRepMap' structure creation form list of 'TF's.
-data TF f where
-    TF :: Typeable a => f a -> TF f
+-- Useful for 'TypeRepMap' structure creation form list of 'WrapTypeable's.
+data WrapTypeable f where
+    WrapTypeable :: Typeable a => f a -> WrapTypeable f
 
-instance Show (TF f) where
-    show (TF tf) = show $ calcFp tf
+instance Show (WrapTypeable f) where
+    show (WrapTypeable tf) = show $ calcFp tf
 
 {- |
 
 prop> fromList . toList == 'id'
 
-Creates 'TypeRepMap' from a list of 'TF's.
+Creates 'TypeRepMap' from a list of 'WrapTypeable's.
 
->>> size $ fromList [TF $ Identity True, TF $ Identity 'a']
+>>> size $ fromList [WrapTypeable $ Identity True, WrapTypeable $ Identity 'a']
 2
 
 
 -}
 instance IsList (TypeRepMap f) where
-    type Item (TypeRepMap f) = TF f
+    type Item (TypeRepMap f) = WrapTypeable f
 
-    fromList :: forall p . [TF p] -> TypeRepMap p
-    fromList = fromListPairs . map (fp &&& an)
+    fromList :: [WrapTypeable f] -> TypeRepMap f
+    fromList = fromTriples . map (\x -> (fp x, an x, k x))
       where
-        fp :: TF p -> Fingerprint
-        fp (TF x) = calcFp x
+        fp :: WrapTypeable f -> Fingerprint
+        fp (WrapTypeable x) = calcFp x
 
-        an :: TF p -> Any
-        an (TF x) = toAny x
+        an :: WrapTypeable f -> Any
+        an (WrapTypeable x) = toAny x
 
-    toList :: forall p . TypeRepMap p -> [TF p]
-    toList TypeRepMap{..} = undefined
+        k :: WrapTypeable f -> Any
+        k (WrapTypeable (_ :: f a)) = unsafeCoerce $ typeRep (Proxy @a)
+
+    toList :: TypeRepMap f -> [WrapTypeable f]
+    toList = map toWrapTypeable . toTriples
+      where
+        toWrapTypeable :: (Fingerprint, Any, Any) -> WrapTypeable f
+        toWrapTypeable (_, an, k) = case unsafeCoerce k of
+            SomeTypeRep tr -> WrapTypeable $ withTypeRep tr an
+
+        withTypeRep :: forall a . (Typeable a) => TR.TypeRep a -> Any -> f a
+        withTypeRep tr a = withTypeable tr (fromAny a)
 
 fromF :: Typeable a => f a -> Proxy a
 fromF _ = Proxy
@@ -315,11 +336,11 @@ fromF _ = Proxy
 calcFp :: Typeable a => f a -> Fingerprint
 calcFp = typeRepFingerprint . typeRep . fromF
 
-fromListPairs :: [(Fingerprint, Any)] -> TypeRepMap f
-fromListPairs kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans)
+fromTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
+fromTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans) (GHC.fromList ks)
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
-    (fps, ans) = unzip $ fromSortedList $ sortWith fst $ nubByFst kvs
+    (fps, ans, ks) = unzip3 $ fromSortedList $ sortWith fst3 $ nubByFst kvs
 
 ----------------------------------------------------------------------------
 -- Tree-like conversion
