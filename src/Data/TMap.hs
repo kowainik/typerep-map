@@ -150,5 +150,8 @@ size = F.size
 
 -- | Map a function over the values.
 map :: (forall a. Typeable a => a -> a) -> TMap -> TMap
-map f = F.hoistWithKey (fmap @Identity f)
+map f = F.hoistWithKey (fIdentity f)
+  where
+    fIdentity :: forall a. Typeable a => (a -> a) -> Identity a -> Identity a
+    fIdentity = coerce
 {-# INLINE map #-}
