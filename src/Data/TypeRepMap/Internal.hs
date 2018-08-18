@@ -27,7 +27,7 @@ import Control.Monad.Zip (mzip)
 import Data.Function (on)
 import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
-import Data.List (nubBy)
+import Data.List (intercalate, nubBy)
 import Data.Maybe (fromJust)
 import Data.Primitive.Array (Array, indexArray, mapArray')
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
@@ -37,7 +37,7 @@ import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 import GHC.Prim (eqWord#, ltWord#)
 import GHC.Word (Word64 (..))
-import Type.Reflection (TypeRep, Typeable, typeRep, withTypeable)
+import Type.Reflection (SomeTypeRep (..), TypeRep, Typeable, typeRep, withTypeable)
 import Type.Reflection.Unsafe (typeRepFingerprint)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -70,14 +70,17 @@ data TypeRepMap (f :: k -> Type) =
   TypeRepMap
     { fingerprintAs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ first components of key fingerprints
     , fingerprintBs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ second components of key fingerprints
-    , anys          :: {-# UNPACK #-} !(Array Any)        -- ^ values stored in the map
-    , keys          :: {-# UNPACK #-} !(Array Any)        -- ^ typerep keys
+    , trAnys        :: {-# UNPACK #-} !(Array Any)        -- ^ values stored in the map
+    , trKeys        :: {-# UNPACK #-} !(Array Any)        -- ^ typerep keys
     }
   -- ^ an unsafe constructor for 'TypeRepMap'
 
--- | Shows only 'Fingerprint's.
+-- | Shows only keys.
 instance Show (TypeRepMap f) where
-    show = show . toFingerprints
+    show TypeRepMap{..} = "TypeRepMap [" ++ showKeys ++ "]"
+      where
+        showKeys :: String
+        showKeys = intercalate ", " $ toList $ mapArray' (show . anyToTypeRep) trKeys
 
 -- | Uses 'union' to combine 'TypeRepMap's.
 instance Semigroup (TypeRepMap f) where
@@ -237,7 +240,7 @@ Just (Identity 11)
 Nothing
 -}
 lookup :: forall a f . Typeable a => TypeRepMap f -> Maybe (f a)
-lookup tVect = fromAny . (anys tVect `indexArray`)
+lookup tVect = fromAny . (trAnys tVect `indexArray`)
            <$> cachedBinarySearch (typeFp @a)
                                   (fingerprintAs tVect)
                                   (fingerprintBs tVect)
@@ -247,6 +250,11 @@ lookup tVect = fromAny . (anys tVect `indexArray`)
 size :: TypeRepMap f -> Int
 size = sizeofPrimArray . fingerprintAs
 {-# INLINE size #-}
+
+-- | Return the list of 'SomeTypeRep' from the keys.
+keys :: TypeRepMap f -> [SomeTypeRep]
+keys TypeRepMap{..} = SomeTypeRep . anyToTypeRep <$> toList trKeys
+{-# INLINE keys #-}
 
 -- | Binary searched based on this article
 -- http://bannalia.blogspot.com/2015/06/cache-friendly-binary-search.html
@@ -281,12 +289,15 @@ toAny = unsafeCoerce
 fromAny :: Any -> f a
 fromAny = unsafeCoerce
 
+anyToTypeRep :: Any -> TypeRep f
+anyToTypeRep = unsafeCoerce
+
 typeFp :: forall a . Typeable a => Fingerprint
 typeFp = typeRepFingerprint $ typeRep @a
 {-# INLINE typeFp #-}
 
 toTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
-toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ anys tm) (GHC.toList $ keys tm)
+toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ trAnys tm) (GHC.toList $ trKeys tm)
 
 deleteByFst :: Eq a => a -> [(a, b, c)] -> [(a, b, c)]
 deleteByFst x = filter ((/= x) . fst3)
@@ -315,8 +326,8 @@ prop> fromList . toList == 'id'
 
 Creates 'TypeRepMap' from a list of 'WrapTypeable's.
 
->>> size $ fromList [WrapTypeable $ Identity True, WrapTypeable $ Identity 'a']
-2
+>>> show $ fromList [WrapTypeable $ Identity True, WrapTypeable $ Identity 'a']
+TypeRepMap [Bool, Char]
 
 
 -}

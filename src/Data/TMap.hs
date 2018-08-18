@@ -39,6 +39,7 @@ module Data.TMap
        , lookup
        , member
        , size
+       , keys
        ) where
 
 import Prelude hiding (lookup, map)
@@ -46,6 +47,7 @@ import Prelude hiding (lookup, map)
 import Data.Functor.Identity (Identity (..))
 import Data.Typeable (Typeable)
 import GHC.Exts (coerce)
+import Type.Reflection (SomeTypeRep)
 
 import qualified Data.TypeRepMap as F
 
@@ -147,6 +149,11 @@ member = F.member @a @Identity
 size :: TMap -> Int
 size = F.size
 {-# INLINE size #-}
+
+-- | Returns the list of 'SomeTypeRep's from keys.
+keys :: TMap -> [SomeTypeRep]
+keys = F.keys
+{-# INLINE keys #-}
 
 -- | Map a function over the values.
 map :: (forall a. Typeable a => a -> a) -> TMap -> TMap

@@ -61,6 +61,7 @@ module Data.TypeRepMap
        , lookup
        , member
        , size
+       , keys
 
          -- * 'IsList'
        , WrapTypeable (..)

@@ -1,5 +1,5 @@
 name:                typerep-map
-version:             0.2.0
+version:             0.3.0
 synopsis:            Efficient implementation of a dependent map with types as keys
 description:
     A dependent map from type representations to values of these types.
