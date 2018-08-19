@@ -4,6 +4,12 @@ Change log
 `typerep-map` uses [PVP Versioning][1].
 The change log is available [on GitHub][2].
 
+# 0.3.0
+
+* [#43](https://github.com/kowainik/typerep-map/issues/43):
+  Make `Show` instance for `TypeRepMap` show keys.
+  Add `keys` function.
+
 # 0.2.0
 
 * [#43](https://github.com/kowainik/typerep-map/issues/43):
