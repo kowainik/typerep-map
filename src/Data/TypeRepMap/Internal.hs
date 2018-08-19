@@ -166,7 +166,7 @@ delete = fromTriples . deleteByFst (typeFp @a) . toTriples
 Update a value at a specific key with the result of the provided function. When
 the key is not a member of the map, the original map is returned.
 
->>> trmap =fromList @(TypeRepMap Identity) [WrapTypeable $ Identity "a"]
+>>> trmap = fromList @(TypeRepMap Identity) [WrapTypeable $ Identity "a"]
 >>> lookup @String $ adjustWithKey (fmap (++ "ww")) trmap
 Just (Identity "aww")
 -}
