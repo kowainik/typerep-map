@@ -162,6 +162,20 @@ delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeR
 delete = fromTriples . deleteByFst (typeFp @a) . toTriples
 {-# INLINE delete #-}
 
+{- |
+Update a value at a specific key with the result of the provided function. When
+the key is not a member of the map, the original map is returned.
+
+>>> trmap =fromList @(TypeRepMap Identity) [WrapTypeable $ Identity "a"]
+>>> lookup @String $ adjustWithKey (fmap (++ "ww")) trmap
+Just (Identity "aww")
+-}
+adjustWithKey :: forall a f . Typeable a => (f a -> f a) -> TypeRepMap f -> TypeRepMap f
+adjustWithKey fun tr = case lookup @a tr of
+    Nothing -> tr
+    Just v  -> insert (fun v) tr
+{-# INLINE adjustWithKey #-}
+
 {- | Map over the elements of a 'TypeRepMap'.
 
 >>> tm = insert (Identity True) $ one (Identity 'a')
