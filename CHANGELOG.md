@@ -11,6 +11,10 @@ The change log is available [on GitHub][2].
   Add `keys` function.
 * [#48](https://github.com/kowainik/typerep-map/issues/48):
   Add `adjust` function for `TypeRepMap` and  `TMap`.
+* [#30](https://github.com/kowainik/typerep-map/issues/30):
+  Rewrite `fromSortedList` to use `Array` and `MutableArray`
+  instead of `IntMap`.
+
 
 # 0.2.0
 

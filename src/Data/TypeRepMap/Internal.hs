@@ -23,15 +23,13 @@ module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
-import Control.Monad.ST (runST)
+import Control.Monad.ST (ST, runST)
 import Control.Monad.Zip (mzip)
 import Data.Function (on)
-import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
-import Data.Maybe (fromJust)
-import Data.Primitive.Array (Array, freezeArray, indexArray, mapArray', readArray, sizeofArray,
-                             thawArray, writeArray)
+import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
+                             thawArray, unsafeFreezeArray, writeArray)
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
@@ -43,7 +41,6 @@ import Type.Reflection (SomeTypeRep (..), TypeRep, Typeable, typeRep, withTypeab
 import Type.Reflection.Unsafe (typeRepFingerprint)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
 
@@ -183,7 +180,7 @@ adjust fun tr = case cachedBinarySearch (typeFp @a) (fingerprintAs tr) (fingerpr
         mutArr <- thawArray trAs 0 n
         a <- toAny . fun . fromAny <$> readArray mutArr i
         writeArray mutArr i a
-        freezeArray mutArr 0 n
+        unsafeFreezeArray mutArr
 {-# INLINE adjust #-}
 
 {- | Map over the elements of a 'TypeRepMap'.
@@ -390,14 +387,22 @@ fromTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromLi
 ----------------------------------------------------------------------------
 
 fromSortedList :: forall a . [a] -> [a]
-fromSortedList l = IM.elems $ fst $ go 0 0 mempty (IM.fromList $ zip [0..] l)
+fromSortedList l = runST $ do
+    let n = length l
+    let arrOrigin = fromListN n l
+    arrResult <- thawArray arrOrigin 0 n
+    go n arrResult arrOrigin
+    toList <$> unsafeFreezeArray arrResult
   where
     -- state monad could be used here, but it's another dependency
-    go :: Int -> Int -> IntMap a -> IntMap a -> (IntMap a, Int)
-    go i first result vector =
-      if i >= IM.size vector
-      then (result, first)
-      else do
-          let (newResult, newFirst) = go (2 * i + 1) first result vector
-          let withCur = IM.insert i (fromJust $ IM.lookup newFirst vector) newResult
-          go (2 * i + 2) (newFirst + 1) withCur vector
+    go :: forall s . Int -> MutableArray s a -> Array a -> ST s ()
+    go len result origin = () <$ loop 0 0
+      where
+        loop :: Int -> Int -> ST s Int
+        loop i first =
+            if i >= len
+            then pure first
+            else do
+                newFirst <- loop (2 * i + 1) first
+                writeArray result i (indexArray origin newFirst)
+                loop (2 * i + 2) (newFirst + 1)
