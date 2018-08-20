@@ -23,15 +23,13 @@ module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
-import Control.Monad.ST (runST)
+import Control.Monad.ST (ST, runST)
 import Control.Monad.Zip (mzip)
 import Data.Function (on)
-import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
-import Data.Maybe (fromJust)
-import Data.Primitive.Array (Array, freezeArray, indexArray, mapArray', readArray, sizeofArray,
-                             thawArray, writeArray)
+import Data.Primitive.Array (Array, MutableArray, freezeArray, indexArray, mapArray', readArray,
+                             sizeofArray, thawArray, writeArray)
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
@@ -43,7 +41,6 @@ import Type.Reflection (SomeTypeRep (..), TypeRep, Typeable, typeRep, withTypeab
 import Type.Reflection.Unsafe (typeRepFingerprint)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
 
@@ -390,14 +387,19 @@ fromTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromLi
 ----------------------------------------------------------------------------
 
 fromSortedList :: forall a . [a] -> [a]
-fromSortedList l = IM.elems $ fst $ go 0 0 mempty (IM.fromList $ zip [0..] l)
+fromSortedList l = runST $ do
+    let n = length l
+    let arrOrigin = fromList l
+    arrResult <- thawArray arrOrigin 0 n
+    _ <- go n 0 0 arrResult arrOrigin
+    toList <$> freezeArray arrResult 0 n
   where
     -- state monad could be used here, but it's another dependency
-    go :: Int -> Int -> IntMap a -> IntMap a -> (IntMap a, Int)
-    go i first result vector =
-      if i >= IM.size vector
-      then (result, first)
+    go :: Int -> Int -> Int -> MutableArray s a -> Array a -> ST s Int
+    go n i first result vector =
+      if i >= n
+      then pure first
       else do
-          let (newResult, newFirst) = go (2 * i + 1) first result vector
-          let withCur = IM.insert i (fromJust $ IM.lookup newFirst vector) newResult
-          go (2 * i + 2) (newFirst + 1) withCur vector
+          newFirst <- go n (2 * i + 1) first result vector
+          writeArray result i (indexArray vector newFirst)
+          go n (2 * i + 2) (newFirst + 1) result vector
