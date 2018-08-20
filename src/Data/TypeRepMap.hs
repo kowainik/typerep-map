@@ -51,7 +51,7 @@ module Data.TypeRepMap
          -- * Modification
        , insert
        , delete
-       , adjustWithKey
+       , adjust
        , hoist
        , hoistA
        , hoistWithKey

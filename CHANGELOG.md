@@ -10,7 +10,7 @@ The change log is available [on GitHub][2].
   Make `Show` instance for `TypeRepMap` show keys.
   Add `keys` function.
 * [#48](https://github.com/kowainik/typerep-map/issues/48):
-  Add `adjustWithKey` for `TypeRepMap` and `adjust` for `TMap`.
+  Add `adjust` function for `TypeRepMap` and  `TMap`.
 
 # 0.2.0
 

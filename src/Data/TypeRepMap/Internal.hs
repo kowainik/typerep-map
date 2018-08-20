@@ -23,13 +23,15 @@ module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
+import Control.Monad.ST (runST)
 import Control.Monad.Zip (mzip)
 import Data.Function (on)
 import Data.IntMap.Strict (IntMap)
 import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
 import Data.Maybe (fromJust)
-import Data.Primitive.Array (Array, indexArray, mapArray')
+import Data.Primitive.Array (Array, freezeArray, indexArray, mapArray', readArray, sizeofArray,
+                             thawArray, writeArray)
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
@@ -167,14 +169,22 @@ Update a value at a specific key with the result of the provided function. When
 the key is not a member of the map, the original map is returned.
 
 >>> trmap = fromList @(TypeRepMap Identity) [WrapTypeable $ Identity "a"]
->>> lookup @String $ adjustWithKey (fmap (++ "ww")) trmap
+>>> lookup @String $ adjust (fmap (++ "ww")) trmap
 Just (Identity "aww")
 -}
-adjustWithKey :: forall a f . Typeable a => (f a -> f a) -> TypeRepMap f -> TypeRepMap f
-adjustWithKey fun tr = case lookup @a tr of
+adjust :: forall a f . Typeable a => (f a -> f a) -> TypeRepMap f -> TypeRepMap f
+adjust fun tr = case cachedBinarySearch (typeFp @a) (fingerprintAs tr) (fingerprintBs tr) of
     Nothing -> tr
-    Just v  -> insert (fun v) tr
-{-# INLINE adjustWithKey #-}
+    Just i  -> tr {trAnys = changeAnyArr i (trAnys tr)}
+  where
+    changeAnyArr :: Int -> Array Any -> Array Any
+    changeAnyArr i trAs = runST $ do
+        let n = sizeofArray trAs
+        mutArr <- thawArray trAs 0 n
+        a <- toAny . fun . fromAny <$> readArray mutArr i
+        writeArray mutArr i a
+        freezeArray mutArr 0 n
+{-# INLINE adjust #-}
 
 {- | Map over the elements of a 'TypeRepMap'.
 

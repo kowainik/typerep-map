@@ -163,7 +163,7 @@ map f = F.hoistWithKey (liftToIdentity f)
 
 -- | Update a value with the result of the provided function.
 adjust :: Typeable a => (a -> a) -> TMap -> TMap
-adjust f = F.adjustWithKey (liftToIdentity f)
+adjust f = F.adjust (liftToIdentity f)
 {-# INLINE adjust #-}
 
 liftToIdentity :: forall a. Typeable a => (a -> a) -> Identity a -> Identity a
