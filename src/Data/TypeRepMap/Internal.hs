@@ -28,8 +28,8 @@ import Control.Monad.Zip (mzip)
 import Data.Function (on)
 import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
-import Data.Primitive.Array (Array, MutableArray, freezeArray, indexArray, mapArray', readArray,
-                             sizeofArray, thawArray, unsafeFreezeArray, writeArray)
+import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
+                             thawArray, unsafeFreezeArray, writeArray)
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
@@ -180,7 +180,7 @@ adjust fun tr = case cachedBinarySearch (typeFp @a) (fingerprintAs tr) (fingerpr
         mutArr <- thawArray trAs 0 n
         a <- toAny . fun . fromAny <$> readArray mutArr i
         writeArray mutArr i a
-        freezeArray mutArr 0 n
+        unsafeFreezeArray mutArr
 {-# INLINE adjust #-}
 
 {- | Map over the elements of a 'TypeRepMap'.
