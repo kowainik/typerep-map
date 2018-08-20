@@ -29,7 +29,7 @@ import Data.Function (on)
 import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
 import Data.Primitive.Array (Array, MutableArray, freezeArray, indexArray, mapArray', readArray,
-                             sizeofArray, thawArray, writeArray)
+                             sizeofArray, thawArray, unsafeFreezeArray, writeArray)
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
@@ -389,17 +389,20 @@ fromTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromLi
 fromSortedList :: forall a . [a] -> [a]
 fromSortedList l = runST $ do
     let n = length l
-    let arrOrigin = fromList l
+    let arrOrigin = fromListN n l
     arrResult <- thawArray arrOrigin 0 n
-    _ <- go n 0 0 arrResult arrOrigin
-    toList <$> freezeArray arrResult 0 n
+    go n arrResult arrOrigin
+    toList <$> unsafeFreezeArray arrResult
   where
     -- state monad could be used here, but it's another dependency
-    go :: Int -> Int -> Int -> MutableArray s a -> Array a -> ST s Int
-    go n i first result vector =
-      if i >= n
-      then pure first
-      else do
-          newFirst <- go n (2 * i + 1) first result vector
-          writeArray result i (indexArray vector newFirst)
-          go n (2 * i + 2) (newFirst + 1) result vector
+    go :: forall s . Int -> MutableArray s a -> Array a -> ST s ()
+    go len result origin = () <$ loop 0 0
+      where
+        loop :: Int -> Int -> ST s Int
+        loop i first =
+            if i >= len
+            then pure first
+            else do
+                newFirst <- loop (2 * i + 1) first
+                writeArray result i (indexArray origin newFirst)
+                loop (2 * i + 2) (newFirst + 1)
