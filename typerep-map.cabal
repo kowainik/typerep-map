@@ -41,7 +41,7 @@ library
                        Data.TypeRepMap
                        Data.TypeRepMap.Internal
   ghc-options:         -Wall
-  build-depends:       base >= 4.9 && < 5
+  build-depends:       base >= 4.10 && < 5
                      , containers
                      , ghc-prim
                      , primitive >= 0.6.4
