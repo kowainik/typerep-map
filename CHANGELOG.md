@@ -6,9 +6,11 @@ The change log is available [on GitHub][2].
 
 # 0.3.0
 
-* [#43](https://github.com/kowainik/typerep-map/issues/43):
+* [#46](https://github.com/kowainik/typerep-map/issues/46):
   Make `Show` instance for `TypeRepMap` show keys.
   Add `keys` function.
+* [#48](https://github.com/kowainik/typerep-map/issues/48):
+  Add `adjust` function for `TypeRepMap` and  `TMap`.
 
 # 0.2.0
 

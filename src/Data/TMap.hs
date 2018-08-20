@@ -34,6 +34,7 @@ module Data.TMap
        , unionWith
        , union
        , map
+       , adjust
 
          -- * Query
        , lookup
@@ -157,8 +158,13 @@ keys = F.keys
 
 -- | Map a function over the values.
 map :: (forall a. Typeable a => a -> a) -> TMap -> TMap
-map f = F.hoistWithKey (fIdentity f)
-  where
-    fIdentity :: forall a. Typeable a => (a -> a) -> Identity a -> Identity a
-    fIdentity = coerce
+map f = F.hoistWithKey (liftToIdentity f)
 {-# INLINE map #-}
+
+-- | Update a value with the result of the provided function.
+adjust :: Typeable a => (a -> a) -> TMap -> TMap
+adjust f = F.adjust (liftToIdentity f)
+{-# INLINE adjust #-}
+
+liftToIdentity :: forall a. Typeable a => (a -> a) -> Identity a -> Identity a
+liftToIdentity = coerce
