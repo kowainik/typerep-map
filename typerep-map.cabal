@@ -42,9 +42,9 @@ library
                        Data.TypeRepMap.Internal
   ghc-options:         -Wall
   build-depends:       base >= 4.10 && < 5
-                     , containers >= 0.5.11.0
-                     , ghc-prim >= 0.5.2.0
-                     , primitive >= 0.6.4
+                     , containers >= 0.5.10.2 && < 0.7
+                     , ghc-prim ^>= 0.5.1.1
+                     , primitive ^>= 0.6.4
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables
@@ -58,8 +58,8 @@ library typerep-extra-impls
                        Data.TypeRep.Vector
   ghc-options:         -Wall
   build-depends:       base >= 4.10 && < 5
-                     , containers >= 0.5.11.0
-                     , vector >= 0.12.0.1
+                     , containers >= 0.5.10.2 && < 0.7
+                     , vector ^>= 0.12.0.1
   default-extensions:  OverloadedStrings
                        RecordWildCards
                        ScopedTypeVariables
@@ -77,14 +77,15 @@ test-suite typerep-map-test
                      , Test.TypeRep.Vector
                      , Test.TypeRep.VectorOpt
   build-depends:       base >= 4.10 && < 5
-                     , ghc-typelits-knownnat >= 0.5
-                     , hedgehog >= 0.6
+                     , ghc-typelits-knownnat >= 0.4.2 && < 0.7
+                     , hedgehog >= 0.5.3 && < 0.7
                      , typerep-map
                      , typerep-extra-impls
-                     , tasty >= 1.1.0.2
-                     , tasty-discover >= 4.1.1
-                     , tasty-hedgehog >= 0.2.0.0
-                     , tasty-hspec >= 1.1.5
+                     , tasty >= 1.0.1.1 && < 1.2
+                     , tasty-discover >= 4.1.1 && < 4.3
+                     , tasty-hedgehog >= 0.1.0.2 && < 0.3
+                     , tasty-hspec ^>= 1.1.5
+                     , QuickCheck >= 2.11.3 && < 2.13
   build-tool-depends:  tasty-discover:tasty-discover
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   default-extensions:  ScopedTypeVariables
@@ -103,11 +104,11 @@ benchmark typerep-map-benchmark
                      , Vector
                      , OptimalVector
   build-depends:       base >= 4.10 && < 5
-                     , criterion >= 1.5.1.0
-                     , deepseq >= 1.4.4.0
-                     , dependent-map >= 0.2.4.0
-                     , dependent-sum >= 0.4
-                     , ghc-typelits-knownnat >= 0.5
+                     , criterion >= 1.4.1.0 && < 1.6
+                     , deepseq ^>= 1.4.3.0
+                     , dependent-map >= 0.2.4.0 && < 0.5
+                     , dependent-sum ^>= 0.4
+                     , ghc-typelits-knownnat >= 0.4.2 && < 0.7
                      , typerep-map
                      , typerep-extra-impls
   default-extensions:  OverloadedStrings
