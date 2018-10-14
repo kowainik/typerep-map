@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE ExplicitNamespaces   #-}
 {-# LANGUAGE KindSignatures       #-}
@@ -29,7 +30,8 @@ benchVectorOpt =
   env mkBigMap $ \ ~bigMap ->
    bgroup "vector optimal"
      [ bench "lookup"     $ nf tenLookups bigMap
-     -- , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
+     -- , bench "insert new 10 elements" $ whnf (inserts empty 10) (Proxy :: Proxy 0)
+     -- , bench "insert big 1 element" $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
      -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
      ]
   
@@ -41,6 +43,20 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
   where
     lp :: forall (a::Nat). Typeable a => Proxy a
     lp = fromJust $ lookup tmap
+
+{-
+ - XXX: not yet implemented
+inserts :: forall a . (KnownNat a)
+        => TypeRepMap (Proxy :: Nat -> *)
+        -> Int
+        -> Proxy (a :: Nat)
+        -> TypeRepMap (Proxy :: Nat -> *)
+inserts !c 0 _ = c
+inserts !c n x = inserts
+   (insert x c)
+   (n-1)
+   (Proxy :: Proxy (a+1))
+-}
 
 -- TypeRepMap of 10000 elements
 mkBigMap :: IO (TypeRepMap (Proxy :: Nat -> *))

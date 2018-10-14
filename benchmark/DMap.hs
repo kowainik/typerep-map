@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE ExplicitNamespaces   #-}
 {-# LANGUAGE InstanceSigs         #-}
@@ -12,15 +13,13 @@
 
 module DMap
        ( benchDMap
-       , prepareBenchDMap
        ) where
 
-import Criterion.Main (Benchmark, bench, bgroup, nf)
+import Criterion.Main (Benchmark, bench, bgroup, nf, whnf, env)
 
 import Prelude hiding (lookup)
 
-import Control.DeepSeq (rnf)
-import Control.Exception
+import Control.DeepSeq (NFData(..))
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Type.Equality ((:~:) (..))
@@ -36,11 +35,14 @@ import Data.Some (Some (This))
 type TypeRepMap = DMap TypeRep
 
 benchDMap :: Benchmark
-benchDMap = bgroup "dependent map"
-   [ bench "lookup"     $ nf tenLookups bigMap
-   -- , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
-   -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
-   ]
+benchDMap = 
+   env mkBigMap $ \ ~(Hack bigMap) ->
+     bgroup "dependent map"
+       [ bench "lookup"     $ nf tenLookups bigMap
+       , bench "insert new 10 elements" $ whnf (inserts empty 10) (Proxy :: Proxy 0)
+       , bench "insert big 1 element" $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
+       -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
+       ]
 
 tenLookups :: TypeRepMap (Proxy :: Nat -> *)
            -> ( Proxy 10, Proxy 20, Proxy 30, Proxy 40
@@ -51,9 +53,20 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
     lp :: forall (a :: Nat) . Typeable a => Proxy a
     lp = fromJust $ lookup (typeRep @a) tmap
 
+inserts :: forall a . (KnownNat a)
+        => TypeRepMap (Proxy :: Nat -> *)
+        -> Int
+        -> Proxy (a :: Nat)
+        -> TypeRepMap (Proxy :: Nat -> *)
+inserts !c 0 _ = c
+inserts !c n x = inserts
+   (insert (typeRep @ a) x c)
+   (n-1)
+   (Proxy :: Proxy (a+1))
+
 -- TypeRepMap of 10000 elements
-bigMap :: TypeRepMap (Proxy :: Nat -> *)
-bigMap = buildBigMap 10000 (Proxy :: Proxy 0) empty
+mkBigMap :: IO (Hack (Proxy :: Nat -> *))
+mkBigMap = pure . Hack $ buildBigMap 10000 (Proxy :: Proxy 0) empty
 
 buildBigMap :: forall a . (KnownNat a)
             => Int
@@ -64,11 +77,11 @@ buildBigMap 1 x = insert (typeRep @a) x
 buildBigMap n x = insert (typeRep @a) x
                 . buildBigMap (n - 1) (Proxy @(a + 1))
 
-rknf :: TypeRepMap f -> ()
-rknf = rnf . map (\(This t) -> typeRepFingerprint t) . keys
+newtype Hack f = Hack (TypeRepMap f)
 
-prepareBenchDMap :: IO ()
-prepareBenchDMap = evaluate (rknf bigMap)
+instance NFData (Hack f) where
+  rnf (Hack x) = 
+    rnf . map (\(This t) -> typeRepFingerprint t) $ keys x
 
 instance GEq TypeRep where
     geq :: TypeRep a -> TypeRep b -> Maybe (a :~: b)

@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE ExplicitNamespaces   #-}
 {-# LANGUAGE KindSignatures       #-}
@@ -12,7 +13,7 @@ module CacheMap
        ( benchCacheMap
        ) where
 
-import Criterion.Main (Benchmark, bench, bgroup, nf, env)
+import Criterion.Main (Benchmark, bench, bgroup, nf, whnf, env)
 
 import Prelude hiding (lookup)
 
@@ -22,14 +23,15 @@ import Data.Typeable (Typeable)
 import GHC.Exts (fromList)
 import GHC.TypeLits
 
-import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), lookup)
+import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), lookup, insert, empty)
 
 benchCacheMap :: Benchmark
 benchCacheMap = 
   env mkBigMap $ \ ~(bigMap) -> 
     bgroup "vector optimal cache"
      [ bench "lookup" $ nf tenLookups bigMap
-     -- , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
+     , bench "insert new 10 elements" $ whnf (inserts empty 10) (Proxy :: Proxy 0)
+     , bench "insert big 1 element" $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
      -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
      ]
 
@@ -42,9 +44,21 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
     lp :: forall (a::Nat). Typeable a => Proxy a
     lp = fromJust $ lookup tmap
 
+inserts :: forall a . (KnownNat a)
+        => TypeRepMap (Proxy :: Nat -> *)
+        -> Int
+        -> Proxy (a :: Nat)
+        -> TypeRepMap (Proxy :: Nat -> *)
+inserts !c 0 _ = c
+inserts !c n x = inserts
+   (insert x c)
+   (n-1)
+   (Proxy :: Proxy (a+1))
+
 -- TypeRepMap of 10000 elements
 mkBigMap :: IO (TypeRepMap (Proxy :: Nat -> *))
 mkBigMap = pure $ fromList $ buildBigMap 10000 (Proxy :: Proxy 0) []
+
 
 buildBigMap :: forall a . (KnownNat a)
             => Int
