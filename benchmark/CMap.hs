@@ -10,24 +10,22 @@
 
 module CMap
        ( benchMap
-       , prepareBenchMap
        ) where
 
-import Criterion.Main (Benchmark, bench, bgroup, nf)
+import Criterion.Main (Benchmark, bench, bgroup, nf, env)
 
 import Prelude hiding (lookup)
 
-import Control.DeepSeq (rnf)
-import Control.Exception
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
 import GHC.TypeLits
 
-import Data.TypeRep.CMap (TypeRepMap (..), empty, insert, keys, lookup)
+import Data.TypeRep.CMap (TypeRepMap (..), empty, insert, lookup)
 
 benchMap :: Benchmark
-benchMap = bgroup "map"
+benchMap = 
+  env mkBigMap $ \ ~(bigMap) -> bgroup "map" $
     [ bench "lookup"     $ nf tenLookups bigMap
     --, bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
     --, bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
@@ -43,15 +41,9 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
     lp = fromJust $ lookup tmap
 
 -- TypeRepMap of 10000 elements
-bigMap :: TypeRepMap (Proxy :: Nat -> *)
-bigMap = buildBigMap 10000 (Proxy :: Proxy 0) empty
+mkBigMap :: IO (TypeRepMap (Proxy :: Nat -> *))
+mkBigMap = pure $ buildBigMap 10000 (Proxy :: Proxy 0) empty
 
 buildBigMap :: forall a . (KnownNat a) => Int -> Proxy (a :: Nat) -> TypeRepMap (Proxy :: Nat -> *) -> TypeRepMap (Proxy :: Nat -> *)
 buildBigMap 1 x = insert x
 buildBigMap n x = insert x . buildBigMap (n - 1) (Proxy :: Proxy (a + 1))
-
-rknf :: TypeRepMap f -> ()
-rknf = rnf . keys
-
-prepareBenchMap :: IO ()
-prepareBenchMap = evaluate (rknf bigMap)

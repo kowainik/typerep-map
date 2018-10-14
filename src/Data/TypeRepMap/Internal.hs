@@ -25,6 +25,7 @@ import Prelude hiding (lookup)
 
 import Control.Monad.ST (ST, runST)
 import Control.Monad.Zip (mzip)
+import Control.DeepSeq
 import Data.Function (on)
 import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
@@ -73,6 +74,9 @@ data TypeRepMap (f :: k -> Type) =
     , trKeys        :: {-# UNPACK #-} !(Array Any)        -- ^ typerep keys
     }
   -- ^ an unsafe constructor for 'TypeRepMap'
+
+instance NFData (TypeRepMap f) where
+   rnf x = rnf (keys x) `seq` ()
 
 -- | Shows only keys.
 instance Show (TypeRepMap f) where

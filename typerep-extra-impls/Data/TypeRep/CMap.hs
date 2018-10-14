@@ -12,6 +12,7 @@ module Data.TypeRep.CMap
 
 import Prelude hiding (lookup)
 
+import Control.DeepSeq
 import Data.Proxy (Proxy (..))
 import Data.Typeable (TypeRep, Typeable, typeRep)
 import GHC.Base (Any)
@@ -23,6 +24,9 @@ import qualified Data.Map.Lazy as LMap
 newtype TypeRepMap (f :: k -> *) = TypeRepMap
     { unMap :: LMap.Map TypeRep Any
     }
+
+instance NFData (TypeRepMap f) where
+  rnf x = rnf (keys x) `seq` ()
 
 -- | Empty structure.
 empty :: TypeRepMap f
