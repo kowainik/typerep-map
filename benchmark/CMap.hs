@@ -10,13 +10,14 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
 module CMap
-       ( benchMap
+       ( spec
        ) where
 
-import Criterion.Main (Benchmark, bench, bgroup, nf, env, whnf)
+import Criterion.Main (bench, nf, env, whnf)
 
 import Prelude hiding (lookup)
 
+import Common
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
@@ -24,14 +25,23 @@ import GHC.TypeLits
 
 import Data.TypeRep.CMap (TypeRepMap (..), empty, insert, lookup)
 
-benchMap :: Benchmark
-benchMap = 
-  env mkBigMap $ \ ~(bigMap) -> bgroup "map" $
-    [ bench "lookup"     $ nf tenLookups bigMap
-    , bench "insert new 10 elements" $ whnf (inserts empty 10) (Proxy :: Proxy 0)
-    , bench "insert big 1 element" $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
-    --, bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
-    ]
+spec :: BenchSpec
+spec = BenchSpec
+  { benchLookup = Just $ \name ->
+      env mkBigMap $ \ ~bigMap ->
+        bench name $ nf tenLookups bigMap
+  , benchInsertSmall = Just $ \name -> 
+      bench name $ whnf (inserts empty 10) (Proxy :: Proxy 0)
+  , benchInsertBig = Just $ \name ->
+      env mkBigMap $ \ ~(bigMap) ->
+       bench name $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
+  , benchUpdateSmall = Just $ \name ->
+      env mkSmallMap $ \ ~(smallMap) ->
+      bench name $ whnf (updates smallMap 10) (Proxy :: Proxy 0)
+  , benchUpdateBig = Just $ \name ->
+      env mkBigMap $ \ ~(bigMap) ->
+        bench name $ whnf (updates bigMap 10) (Proxy :: Proxy 0)
+  }
 
 tenLookups :: TypeRepMap (Proxy :: Nat -> *)
            -> ( Proxy 10, Proxy 20, Proxy 30, Proxy 40
@@ -52,6 +62,20 @@ inserts !c n x = inserts
    (insert x c)
    (n-1)
    (Proxy :: Proxy (a+1))
+
+updates :: forall a . (KnownNat a)
+        => TypeRepMap (Proxy :: Nat -> *)
+        -> Int
+        -> Proxy (a :: Nat)
+        -> TypeRepMap (Proxy :: Nat -> *)
+updates !c 0 _ = c
+updates !c n x = inserts
+   (insert x c)
+   (n-1)
+   (Proxy :: Proxy (a+1))
+
+mkSmallMap :: IO (TypeRepMap (Proxy :: Nat -> *))
+mkSmallMap = pure $ buildBigMap 10 (Proxy :: Proxy 0) empty
 
 -- TypeRepMap of 10000 elements
 mkBigMap :: IO (TypeRepMap (Proxy :: Nat -> *))

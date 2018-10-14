@@ -12,13 +12,14 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver -fno-warn-orphans #-}
 
 module DMap
-       ( benchDMap
+       ( spec
        ) where
 
-import Criterion.Main (Benchmark, bench, bgroup, nf, whnf, env)
+import Criterion.Main (bench, nf, whnf, env)
 
 import Prelude hiding (lookup)
 
+import Common
 import Control.DeepSeq (NFData(..))
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
@@ -34,15 +35,20 @@ import Data.Some (Some (This))
 
 type TypeRepMap = DMap TypeRep
 
-benchDMap :: Benchmark
-benchDMap = 
-   env mkBigMap $ \ ~(Hack bigMap) ->
-     bgroup "dependent map"
-       [ bench "lookup"     $ nf tenLookups bigMap
-       , bench "insert new 10 elements" $ whnf (inserts empty 10) (Proxy :: Proxy 0)
-       , bench "insert big 1 element" $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
-       -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
-       ]
+
+spec :: BenchSpec
+spec = BenchSpec
+  { benchLookup = Just $ \name ->
+      env mkBigMap $ \ ~(Hack bigMap) ->
+        bench name $ nf tenLookups bigMap
+  , benchInsertSmall = Just $ \name -> 
+      bench name $ whnf (inserts empty 10) (Proxy :: Proxy 0)
+  , benchInsertBig = Just $ \name ->
+      env mkBigMap $ \ ~(Hack bigMap) ->
+       bench name $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
+  , benchUpdateSmall = Nothing -- Not implemented
+  , benchUpdateBig = Nothing -- Not implemented
+  }
 
 tenLookups :: TypeRepMap (Proxy :: Nat -> *)
            -> ( Proxy 10, Proxy 20, Proxy 30, Proxy 40

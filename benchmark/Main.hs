@@ -2,25 +2,34 @@
 
 module Main where
 
-import Criterion.Main (defaultMain)
+import Criterion.Main (defaultMain, bgroup)
 
-import CacheMap (benchCacheMap)
-import CMap (benchMap)
+import Common
+import qualified CMap
+import qualified CacheMap
 #if ( __GLASGOW_HASKELL__ >= 802 )
-import DMap (benchDMap)
+import qualified DMap
 #endif
-import OptimalVector (benchVectorOpt)
+import qualified OptimalVector as OptVec
 
 main :: IO ()
 main = do
+  let spec = [("CMap", CMap.spec)
+             ,("CacheMap", CacheMap.spec)
 #if ( __GLASGOW_HASKELL__ >= 802 )
+             , ("DMap", DMap.spec)
 #endif
+             , ("OptVec", OptVec.spec)
+             ]
+      mkGroup f = 
+        [ b label
+        | (label, v) <- spec 
+        , Just b <- pure $ f v
+        ]
   defaultMain
-    [ benchMap
-   -- , benchVector
-    , benchCacheMap
-    , benchVectorOpt
-#if ( __GLASGOW_HASKELL__ >= 802 )
-    , benchDMap
-#endif
-    ]
+    [ bgroup "lookup" $ mkGroup benchLookup 
+    , bgroup "insert"
+       [ bgroup "10 elements to empty" $ mkGroup benchInsertSmall
+       , bgroup "1 element to big map" $ mkGroup benchInsertBig
+       ]
+    ] 
