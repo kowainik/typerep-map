@@ -31,7 +31,7 @@ import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
 import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
                              thawArray, unsafeFreezeArray, writeArray)
-import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
+import Data.Primitive.PrimArray
 import Data.Semigroup (Semigroup (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
@@ -135,8 +135,20 @@ prop> member @a (insert (x :: f a) tm) == True
 
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
-insert x = fromTriples . addX . toTriples
+insert x t = case midx of
+  Nothing -> fromTriples . addX . toTriples $ t
+  Just idx -> runST $ do
+    new <- thawArray (trAnys t) 0 (sizeofArray (trAnys t))
+    writeArray new idx (unsafeCoerce x)
+    trAnys' <- unsafeFreezeArray new
+    pure t{trAnys = trAnys'}
   where
+    -- First we try to check if an element exists
+    -- as in this case we have to do a single write
+    midx = cachedBinarySearch (typeFp @a)
+                              (fingerprintAs t)
+                              (fingerprintBs t)
+
     tripleX :: (Fingerprint, Any, Any)
     tripleX@(fpX, _, _) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
 
