@@ -32,4 +32,8 @@ main = do
        [ bgroup "10 elements to empty" $ mkGroup benchInsertSmall
        , bgroup "1 element to big map" $ mkGroup benchInsertBig
        ]
+    , bgroup "update"
+       [ bgroup "10 elements to empty" $ mkGroup benchUpdateSmall
+       , bgroup "1 element to big map" $ mkGroup benchUpdateBig
+       ]
     ] 

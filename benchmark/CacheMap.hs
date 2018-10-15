@@ -32,10 +32,10 @@ spec = BenchSpec
       env mkBigMap $ \ ~bigMap ->
         bench name $ nf tenLookups bigMap
   , benchInsertSmall = Just $ \name -> 
-      bench name $ whnf (inserts empty 10) (Proxy :: Proxy 0)
+      bench name $ whnf (inserts empty 10) (Proxy :: Proxy 99999)
   , benchInsertBig = Just $ \name ->
       env mkBigMap $ \ ~(bigMap) ->
-       bench name $ whnf (inserts bigMap 1) (Proxy :: Proxy 0)
+       bench name $ whnf (inserts bigMap 1) (Proxy :: Proxy 99999)
   , benchUpdateSmall = Just $ \name ->
       env mkSmallMap $ \ ~(smallMap) ->
       bench name $ whnf (updates smallMap 10) (Proxy :: Proxy 0)
