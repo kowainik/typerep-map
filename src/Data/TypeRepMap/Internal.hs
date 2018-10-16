@@ -23,15 +23,16 @@ module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
+import Control.Monad (when)
 import Control.Monad.ST (ST, runST)
 import Control.Monad.Zip (mzip)
 import Control.DeepSeq
 import Data.Function (on)
 import Data.Kind (Type)
 import Data.List (intercalate, nubBy)
-import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
-                             thawArray, unsafeFreezeArray, writeArray)
+import Data.Primitive.Array
 import Data.Primitive.PrimArray
+import Data.Primitive.Types (Prim)
 import Data.Semigroup (Semigroup (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
@@ -44,6 +45,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
+
 
 {- |
 
@@ -126,6 +128,98 @@ one :: forall a f . Typeable a => f a -> TypeRepMap f
 one x = insert x empty
 {-# INLINE one #-}
 
+swapPrimArray :: Prim a => MutablePrimArray s a -> Int -> Int -> ST s ()
+swapPrimArray a i j = do
+  ix <- readPrimArray a i
+  jx <- readPrimArray a j
+  writePrimArray a i jx
+  writePrimArray a j ix
+
+swapArray :: MutableArray s a -> Int -> Int -> ST s ()
+swapArray a i j = do
+  ix <- readArray a i
+  jx <- readArray a j
+  writeArray a i jx
+  writeArray a j ix
+
+normalizeD :: MutablePrimArray s Word64
+           -> MutablePrimArray s Word64
+           -> MutableArray s Any
+           -> MutableArray s Any
+           -> Int
+           -> Int
+           -> ST s ()
+normalizeD fpas fpbs anys ks idx len = do
+  indexA <- readPrimArray fpas idx
+  indexB <- readPrimArray fpbs idx
+  let left = idx*2+1
+      right = idx*2+2
+  let swap a b = do
+        swapPrimArray fpas a b
+        swapPrimArray fpbs a b
+        swapArray anys a b
+        swapArray ks a b
+  when (left < len) $ do
+    leftA <- readPrimArray fpas left
+    case indexA `compare` leftA of
+      LT -> do
+       swap idx left
+       normalizeD fpas fpbs anys ks left len
+      EQ -> do
+       leftB <- readPrimArray fpbs left
+       when (indexB <= leftB) $ do
+         swap idx left
+         normalizeD fpas fpbs anys ks left len
+      GT -> do
+        when (right < len) $ do
+          rightA <- readPrimArray fpas right
+          case indexA `compare` rightA of
+            LT -> pure ()
+            EQ -> do
+             rightB <- readPrimArray fpbs right
+             when (indexB >= rightB) $ do
+               swap idx right
+               normalizeD fpas fpbs anys ks right len
+            GT -> do
+             swap idx right
+             normalizeD fpas fpbs anys ks right len
+
+           
+
+normalize :: MutablePrimArray s Word64
+          -> MutablePrimArray s Word64
+          -> MutableArray s Any
+          -> MutableArray s Any
+          -> Int
+          -> ST s ()
+normalize fpas fpbs anys ks 0 =
+  normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+normalize fpas fpbs anys ks idx = do
+  let parent = (idx-(1-idx `mod` 2)) `div` 2 -- TODO bit twiddling
+  indexA <- readPrimArray fpas idx 
+  parentA <- readPrimArray fpas parent
+  let above = do
+        swapPrimArray fpas idx parent
+        swapPrimArray fpbs idx parent
+        swapArray anys idx parent
+        swapArray ks idx parent
+        normalize fpas fpbs anys ks parent
+  if odd idx
+  then case indexA `compare` parentA of
+         LT -> pure ()
+         EQ -> do 
+          indexB <- readPrimArray fpbs idx
+          parentB <- readPrimArray fpbs parent
+          when (indexB >= parentB) above
+         GT -> above
+  else case indexA `compare` parentA of
+         LT -> above
+         EQ -> do
+          indexB <- readPrimArray fpbs idx
+          parentB <- readPrimArray fpbs parent
+          when (indexB <= parentB) above
+         GT -> pure ()
+
 {- |
 
 Insert a value into a 'TypeRepMap'.
@@ -136,24 +230,41 @@ prop> member @a (insert (x :: f a) tm) == True
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x t = case midx of
-  Nothing -> fromTriples . addX . toTriples $ t
+  Nothing -> runST $ do
+    let len = sizeofArray (trAnys t)
+    -- first word64
+    fpas <- newPrimArray (len + 1)
+    copyPrimArray fpas 0 (fingerprintAs t) 0 len
+    writePrimArray fpas len wa
+    -- second word64
+    fpbs <- newPrimArray (len + 1) 
+    copyPrimArray fpbs 0 (fingerprintBs t) 0 len
+    writePrimArray fpbs len wb
+    -- value
+    tran <- newArray (len+1) (error "fail")
+    copyArray tran 0 (trAnys t) 0 len
+    writeArray tran len (unsafeCoerce x)
+    -- key
+    trke <- newArray (len+1) (error "fail")
+    copyArray trke 0 (trKeys t) 0 len
+    writeArray trke len (unsafeCoerce $ typeRep @a)
+    normalize fpas fpbs tran trke len
+    TypeRepMap <$> unsafeFreezePrimArray fpas
+               <*> unsafeFreezePrimArray fpbs
+               <*> unsafeFreezeArray tran
+               <*> unsafeFreezeArray trke
   Just idx -> runST $ do
     new <- thawArray (trAnys t) 0 (sizeofArray (trAnys t))
     writeArray new idx (unsafeCoerce x)
     trAnys' <- unsafeFreezeArray new
     pure t{trAnys = trAnys'}
   where
+    (Fingerprint wa wb) = typeFp @a
     -- First we try to check if an element exists
     -- as in this case we have to do a single write
     midx = cachedBinarySearch (typeFp @a)
                               (fingerprintAs t)
                               (fingerprintBs t)
-
-    tripleX :: (Fingerprint, Any, Any)
-    tripleX@(fpX, _, _) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
-
-    addX :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
-    addX l = tripleX : deleteByFst fpX l
 {-# INLINE insert #-}
 
 -- Extract the kind of a type. We use it to work around lack of syntax for
