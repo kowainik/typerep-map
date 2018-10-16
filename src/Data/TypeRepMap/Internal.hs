@@ -166,7 +166,6 @@ insert x t = case midx of
     swapArray tran 0 len
     swapArray trke 0 len
     normalize fpas fpbs tran trke len
-    normalizeD fpas fpbs tran trke 0 (len+1)
     TypeRepMap <$> unsafeFreezePrimArray fpas
                <*> unsafeFreezePrimArray fpbs
                <*> unsafeFreezeArray tran
@@ -501,28 +500,36 @@ normalize :: MutablePrimArray s Word64
 normalize _fpas _fpbs _anys _ks 0 = pure ()
 normalize fpas fpbs anys ks idx = do
   let parent = (idx-(1-idx `mod` 2)) `div` 2 -- TODO bit twiddling
-  indexA <- readPrimArray fpas idx 
-  indexB <- readPrimArray fpbs idx
-  parentA <- readPrimArray fpas parent
-  let above = do
-        swapElems fpas fpbs anys ks idx parent
-        when (parent == 0) $ do
+  if parent == 0
+  then do
+    indexA <- readPrimArray fpas idx 
+    indexB <- readPrimArray fpbs idx
+    parentA <- readPrimArray fpas parent
+    let next = do
+          swapElems fpas fpbs anys ks idx parent
           normalizeD fpas fpbs anys ks idx (sizeofMutablePrimArray fpas)
-  if odd idx
-  then case indexA `compare` parentA of
-         LT -> pure ()
-         EQ -> do 
-          parentB <- readPrimArray fpbs parent
-          when (indexB >= parentB)
-            above
-         GT -> above
-  else case indexA `compare` parentA of
-         LT -> above
-         EQ -> do
-          parentB <- readPrimArray fpbs parent
-          when (indexB <= parentB)
-            above
-         GT -> pure ()
+    if odd idx
+    then case indexA `compare` parentA of
+           LT -> normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+           EQ -> do 
+            parentB <- readPrimArray fpbs parent
+            if indexB >= parentB
+            then next
+            else normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+           GT -> next 
+    else case indexA `compare` parentA of
+           LT -> next
+           EQ -> do
+            parentB <- readPrimArray fpbs parent
+            if indexB <= parentB
+            then next
+            else normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+           GT ->
+            normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+  else do
+    swapElems fpas fpbs anys ks idx parent
+    normalize fpas fpbs anys ks parent
+
 
 -- | /O(ln N)/. Normalize the tree downwards.
 --
