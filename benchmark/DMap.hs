@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE ExplicitNamespaces   #-}
 {-# LANGUAGE InstanceSigs         #-}
@@ -42,10 +41,10 @@ spec = BenchSpec
       env mkBigMap $ \ ~(Hack bigMap) ->
         bench name $ nf tenLookups bigMap
   , benchInsertSmall = Just $ \name -> 
-      bench name $ whnf (inserts empty 10) (Proxy :: Proxy 99999)
+      bench name $ whnf (inserts empty 10) (Proxy @ 99999)
   , benchInsertBig = Just $ \name ->
       env mkBigMap $ \ ~(Hack bigMap) ->
-       bench name $ whnf (inserts bigMap 1) (Proxy :: Proxy 99999)
+       bench name $ whnf (inserts bigMap 1) (Proxy @ 99999)
   , benchUpdateSmall = Nothing -- Not implemented
   , benchUpdateBig = Nothing -- Not implemented
   }
