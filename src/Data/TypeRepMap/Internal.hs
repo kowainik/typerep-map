@@ -128,97 +128,7 @@ one :: forall a f . Typeable a => f a -> TypeRepMap f
 one x = insert x empty
 {-# INLINE one #-}
 
-swapPrimArray :: Prim a => MutablePrimArray s a -> Int -> Int -> ST s ()
-swapPrimArray a i j = do
-  ix <- readPrimArray a i
-  jx <- readPrimArray a j
-  writePrimArray a i jx
-  writePrimArray a j ix
-
-swapArray :: MutableArray s a -> Int -> Int -> ST s ()
-swapArray a i j = do
-  ix <- readArray a i
-  jx <- readArray a j
-  writeArray a i jx
-  writeArray a j ix
-
-normalizeD :: MutablePrimArray s Word64
-           -> MutablePrimArray s Word64
-           -> MutableArray s Any
-           -> MutableArray s Any
-           -> Int
-           -> Int
-           -> ST s ()
-normalizeD fpas fpbs anys ks idx len = do
-  indexA <- readPrimArray fpas idx
-  indexB <- readPrimArray fpbs idx
-  let left = idx*2+1
-      right = idx*2+2
-  let swap a b = do
-        swapPrimArray fpas a b
-        swapPrimArray fpbs a b
-        swapArray anys a b
-        swapArray ks a b
-  when (left < len) $ do
-    leftA <- readPrimArray fpas left
-    case indexA `compare` leftA of
-      LT -> do
-       swap idx left
-       normalizeD fpas fpbs anys ks left len
-      EQ -> do
-       leftB <- readPrimArray fpbs left
-       when (indexB <= leftB) $ do
-         swap idx left
-         normalizeD fpas fpbs anys ks left len
-      GT -> do
-        when (right < len) $ do
-          rightA <- readPrimArray fpas right
-          case indexA `compare` rightA of
-            LT -> pure ()
-            EQ -> do
-             rightB <- readPrimArray fpbs right
-             when (indexB >= rightB) $ do
-               swap idx right
-               normalizeD fpas fpbs anys ks right len
-            GT -> do
-             swap idx right
-             normalizeD fpas fpbs anys ks right len
-
            
-
-normalize :: MutablePrimArray s Word64
-          -> MutablePrimArray s Word64
-          -> MutableArray s Any
-          -> MutableArray s Any
-          -> Int
-          -> ST s ()
-normalize fpas fpbs anys ks 0 =
-  normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
-normalize fpas fpbs anys ks idx = do
-  let parent = (idx-(1-idx `mod` 2)) `div` 2 -- TODO bit twiddling
-  indexA <- readPrimArray fpas idx 
-  parentA <- readPrimArray fpas parent
-  let above = do
-        swapPrimArray fpas idx parent
-        swapPrimArray fpbs idx parent
-        swapArray anys idx parent
-        swapArray ks idx parent
-        normalize fpas fpbs anys ks parent
-  if odd idx
-  then case indexA `compare` parentA of
-         LT -> pure ()
-         EQ -> do 
-          indexB <- readPrimArray fpbs idx
-          parentB <- readPrimArray fpbs parent
-          when (indexB >= parentB) above
-         GT -> above
-  else case indexA `compare` parentA of
-         LT -> above
-         EQ -> do
-          indexB <- readPrimArray fpbs idx
-          parentB <- readPrimArray fpbs parent
-          when (indexB <= parentB) above
-         GT -> pure ()
 
 {- |
 
@@ -248,7 +158,15 @@ insert x t = case midx of
     trke <- newArray (len+1) (error "fail")
     copyArray trke 0 (trKeys t) 0 len
     writeArray trke len (unsafeCoerce $ typeRep @a)
+
+    -- We change the root and the last element and then
+    -- fix all invariants, see @normalize@.
+    swapPrimArray fpas 0 len
+    swapPrimArray fpbs 0 len
+    swapArray tran 0 len
+    swapArray trke 0 len
     normalize fpas fpbs tran trke len
+    normalizeD fpas fpbs tran trke 0 (len+1)
     TypeRepMap <$> unsafeFreezePrimArray fpas
                <*> unsafeFreezePrimArray fpbs
                <*> unsafeFreezeArray tran
@@ -533,3 +451,170 @@ fromSortedList l = runST $ do
                 newFirst <- loop (2 * i + 1) first
                 writeArray result i (indexArray origin newFirst)
                 loop (2 * i + 2) (newFirst + 1)
+
+----------------------------------------------------------------------------
+--  Helper functions.
+----------------------------------------------------------------------------
+
+-- | /O(ln N)/. First step of the normalization procedure.
+-- This is upwards normalization it expects that 2 elements in the tree
+-- may be unbalanced, the root element and the last element.
+--
+-- And the last element was previously the root element. This fact is very
+-- valuable, it means that this when normalized will reach the top again
+-- without invariants invalidation.
+--
+-- @
+--         k
+--      x     y_0
+--   x   x   y_1 y_2
+--  x x x x z
+-- @
+--
+-- 1. $\forall x. x < z$
+-- 2. $\forall y. y > z$
+-- 3. $\forall x y. x < y
+--
+-- The fix of such structure is easy we should check invariants when going
+-- up. Actually it's even possible to omit the checks as they are parts
+-- of the invariant. So we will reorder structure to the
+--
+-- @
+--           k
+--               z
+--     ...    y_0  y_2
+--           y_1
+-- @
+--
+-- At that point we should check @k@ and @z@ set them accordingly and the
+-- run 'normalizeD' on the k.
+--
+-- We need this trick because the root is the only safe place where a new
+-- element can be put, otherwise it will not be possible to check all
+-- invariants in the logarithmic time.
+normalize :: MutablePrimArray s Word64
+          -> MutablePrimArray s Word64
+          -> MutableArray s Any
+          -> MutableArray s Any
+          -> Int
+          -> ST s ()
+normalize _fpas _fpbs _anys _ks 0 = pure ()
+normalize fpas fpbs anys ks idx = do
+  let parent = (idx-(1-idx `mod` 2)) `div` 2 -- TODO bit twiddling
+  indexA <- readPrimArray fpas idx 
+  indexB <- readPrimArray fpbs idx
+  parentA <- readPrimArray fpas parent
+  let above = do
+        swapElems fpas fpbs anys ks idx parent
+        when (parent == 0) $ do
+          normalizeD fpas fpbs anys ks idx (sizeofMutablePrimArray fpas)
+  if odd idx
+  then case indexA `compare` parentA of
+         LT -> pure ()
+         EQ -> do 
+          parentB <- readPrimArray fpbs parent
+          when (indexB >= parentB)
+            above
+         GT -> above
+  else case indexA `compare` parentA of
+         LT -> above
+         EQ -> do
+          parentB <- readPrimArray fpbs parent
+          when (indexB <= parentB)
+            above
+         GT -> pure ()
+
+-- | /O(ln N)/. Normalize the tree downwards.
+--
+-- This is the second part of the tree normalization procedure.
+-- This function expects to receive the tree where all invariants
+-- are hold except for a single element that is beign balanced.
+--
+-- For such an element happens we need to check only it's descenent
+-- elements.
+--
+-- @
+--  p
+--   x
+-- y   z
+-- @
+--
+-- (Assume x in the right branch): the following equations holds:
+--   1. $\forall z \in Z . z > p$
+--   2. $\forall y \in Y . y > p$
+--   3. $\forall z \in Z, y \in Y . y < z$
+--
+-- Where Y and Z stands for entire subtree of y and z respectively. 
+-- So if @y<x<z@ then all equations still holds and all invariants are
+-- kept. But if @x>y@ or @x<z@ then invariants are violated and in
+-- order to restore them we need to swap elements and continue the
+-- process recursively. As we go only down the tree - it's guaranteed
+-- that the number of steps is less then the height of the tree, 
+-- that is /O(ln N)/.
+normalizeD :: MutablePrimArray s Word64
+           -> MutablePrimArray s Word64
+           -> MutableArray s Any
+           -> MutableArray s Any
+           -> Int
+           -> Int
+           -> ST s ()
+normalizeD fpas fpbs anys ks idx len = do
+  indexA <- readPrimArray fpas idx
+  indexB <- readPrimArray fpbs idx
+  let left = idx*2+1
+      right = idx*2+2
+  let swap = swapElems fpas fpbs anys ks
+  when (left < len) $ do
+    leftA <- readPrimArray fpas left
+    case indexA `compare` leftA of
+      LT -> do
+       swap idx left
+       normalizeD fpas fpbs anys ks left len
+      EQ -> do
+       leftB <- readPrimArray fpbs left
+       when (indexB <= leftB) $ do
+         swap idx left
+         normalizeD fpas fpbs anys ks left len
+      GT -> do
+        when (right < len) $ do
+          rightA <- readPrimArray fpas right
+          case indexA `compare` rightA of
+            LT -> pure ()
+            EQ -> do
+             rightB <- readPrimArray fpbs right
+             when (indexB >= rightB) $ do
+               swap idx right
+               normalizeD fpas fpbs anys ks right len
+            GT -> do
+             swap idx right
+             normalizeD fpas fpbs anys ks right len
+
+-- | Swap elements in a primitive array.
+swapPrimArray :: Prim a => MutablePrimArray s a -> Int -> Int -> ST s ()
+swapPrimArray a i j = do
+  ix <- readPrimArray a i
+  jx <- readPrimArray a j
+  writePrimArray a i jx
+  writePrimArray a j ix
+
+-- | Swap elements in array.
+swapArray :: MutableArray s a -> Int -> Int -> ST s ()
+swapArray a i j = do
+  ix <- readArray a i
+  jx <- readArray a j
+  writeArray a i jx
+  writeArray a j ix
+
+-- | Swap elements in the typerep.
+swapElems :: MutablePrimArray s Word64
+          -> MutablePrimArray s Word64
+          -> MutableArray s Any
+          -> MutableArray s Any
+          -> Int
+          -> Int
+          -> ST s ()
+swapElems fpas fpbs anys ks i j = do
+  swapPrimArray fpas i j
+  swapPrimArray fpbs i j
+  swapArray anys i j
+  swapArray ks i j
