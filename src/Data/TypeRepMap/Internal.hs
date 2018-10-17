@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeInType          #-}
 {-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE UnboxedTuples       #-}
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
@@ -109,6 +110,11 @@ data MutableTypeRepMap s =
     , mutTrKeys        :: {-# UNPACK #-} !(MutableArray s Any)        -- ^ typerep keys
     }
 
+-- | Helper type so we don't need to write full signature.
+-- This type is used when we need to pass an element from one
+-- map to another.
+type Elem = (# Word64, Word64, Any, Any #)
+
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFingerprints :: TypeRepMap f -> [Fingerprint]
 toFingerprints TypeRepMap{..} =
@@ -191,7 +197,20 @@ False
 True
 -}
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
-delete = fromTriples . deleteByFst (typeFp @a) . toTriples
+delete t = case cachedBinarySearch (typeFp @a) (fingerprintAs t) (fingerprintBs t) of
+  Nothing -> t
+  Just i -> runST $ do
+    let n = size t
+    m <- newTypeRepMap (n-1)
+    copyTypeRepMap m 0 t 0 (n-1)
+    if i == n -- do we remove last element
+    then unsafeFreezeTypeRepMap m
+    else do
+      swapElems m 0 i
+      case indexTypeRepMap t n of
+        x -> do unsafeWriteElem m 0 x
+                normalize m i
+                unsafeFreezeTypeRepMap m
 {-# INLINE delete #-}
 
 {- |
@@ -627,13 +646,17 @@ copyTypeRepMap MutableTypeRepMap{..} offset TypeRepMap{..} i n = do
 -- This action may break invariants, and map may need to be 
 -- normalized.
 unsafeWriteTypeRepMap :: forall a f s . Typeable a => MutableTypeRepMap s -> Int -> f a -> ST s ()
-unsafeWriteTypeRepMap MutableTypeRepMap{..} n x = do
-    writePrimArray mutFingerprintAs n wa
-    writePrimArray mutFingerprintBs n wb
-    writeArray mutTrAnys n (unsafeCoerce x)
-    writeArray mutTrKeys n (unsafeCoerce $ typeRep @a)
+unsafeWriteTypeRepMap m n x = do
+    unsafeWriteElem m n (# wa, wb, unsafeCoerce x, unsafeCoerce $ typeRep @a #)
   where
     Fingerprint wa wb = typeFp @a
+
+unsafeWriteElem :: MutableTypeRepMap s -> Int -> Elem -> ST s ()
+unsafeWriteElem MutableTypeRepMap{..} n (# wa, wb, x, r #) = do
+    writePrimArray mutFingerprintAs n wa
+    writePrimArray mutFingerprintBs n wb
+    writeArray mutTrAnys n x
+    writeArray mutTrKeys n r
 
 -- | Freeze unsafe type rep map, getting a TypeRepMap
 unsafeFreezeTypeRepMap :: MutableTypeRepMap s -> ST s (TypeRepMap f)
@@ -642,3 +665,10 @@ unsafeFreezeTypeRepMap MutableTypeRepMap{..} =
                <*> unsafeFreezePrimArray mutFingerprintBs
                <*> unsafeFreezeArray mutTrAnys
                <*> unsafeFreezeArray mutTrKeys
+
+indexTypeRepMap :: TypeRepMap f -> Int -> Elem
+indexTypeRepMap TypeRepMap{..} n =
+  (# indexPrimArray fingerprintAs n
+   , indexPrimArray fingerprintBs n
+   , indexArray trAnys n
+   , indexArray trKeys n #)
