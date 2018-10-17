@@ -99,6 +99,16 @@ instance Monoid (TypeRepMap f) where
     {-# INLINE mempty #-}
     {-# INLINE mappend #-}
 
+-- | Mutable version of type rep map, this version is used 
+-- to abstract unsafe but fast operations.
+data MutableTypeRepMap s =
+  MutableTypeRepMap
+    { mutFingerprintAs :: {-# UNPACK #-} !(MutablePrimArray s Word64) -- ^ first components of key fingerprints
+    , mutFingerprintBs :: {-# UNPACK #-} !(MutablePrimArray s Word64) -- ^ second components of key fingerprints
+    , mutTrAnys        :: {-# UNPACK #-} !(MutableArray s Any)        -- ^ values stored in the map
+    , mutTrKeys        :: {-# UNPACK #-} !(MutableArray s Any)        -- ^ typerep keys
+    }
+
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFingerprints :: TypeRepMap f -> [Fingerprint]
 toFingerprints TypeRepMap{..} =
@@ -142,41 +152,20 @@ insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
 insert x t = case midx of
   Nothing -> runST $ do
     let len = sizeofArray (trAnys t)
-    -- first word64
-    fpas <- newPrimArray (len + 1)
-    copyPrimArray fpas 0 (fingerprintAs t) 0 len
-    writePrimArray fpas len wa
-    -- second word64
-    fpbs <- newPrimArray (len + 1) 
-    copyPrimArray fpbs 0 (fingerprintBs t) 0 len
-    writePrimArray fpbs len wb
-    -- value
-    tran <- newArray (len+1) (error "fail")
-    copyArray tran 0 (trAnys t) 0 len
-    writeArray tran len (unsafeCoerce x)
-    -- key
-    trke <- newArray (len+1) (error "fail")
-    copyArray trke 0 (trKeys t) 0 len
-    writeArray trke len (unsafeCoerce $ typeRep @a)
-
+    m <- newTypeRepMap (len+1)
+    copyTypeRepMap m 0 t 0 len
+    unsafeWriteTypeRepMap m len x
     -- We change the root and the last element and then
     -- fix all invariants, see @normalize@.
-    swapPrimArray fpas 0 len
-    swapPrimArray fpbs 0 len
-    swapArray tran 0 len
-    swapArray trke 0 len
-    normalize fpas fpbs tran trke len
-    TypeRepMap <$> unsafeFreezePrimArray fpas
-               <*> unsafeFreezePrimArray fpbs
-               <*> unsafeFreezeArray tran
-               <*> unsafeFreezeArray trke
+    swapElems m 0 len
+    normalize m len
+    unsafeFreezeTypeRepMap m
   Just idx -> runST $ do
     new <- thawArray (trAnys t) 0 (sizeofArray (trAnys t))
     writeArray new idx (unsafeCoerce x)
     trAnys' <- unsafeFreezeArray new
     pure t{trAnys = trAnys'}
   where
-    (Fingerprint wa wb) = typeFp @a
     -- First we try to check if an element exists
     -- as in this case we have to do a single write
     midx = cachedBinarySearch (typeFp @a)
@@ -491,14 +480,11 @@ fromSortedList l = runST $ do
 -- We need this trick because the root is the only safe place where a new
 -- element can be put, otherwise it will not be possible to check all
 -- invariants in the logarithmic time.
-normalize :: MutablePrimArray s Word64
-          -> MutablePrimArray s Word64
-          -> MutableArray s Any
-          -> MutableArray s Any
+normalize :: MutableTypeRepMap s
           -> Int
           -> ST s ()
-normalize _fpas _fpbs _anys _ks 0 = pure ()
-normalize fpas fpbs anys ks idx = do
+normalize _ 0 = pure ()
+normalize m@(MutableTypeRepMap fpas fpbs _ _) idx = do
   let parent = (idx-(1-idx `mod` 2)) `div` 2 -- TODO bit twiddling
   if parent == 0
   then do
@@ -506,16 +492,16 @@ normalize fpas fpbs anys ks idx = do
     indexB <- readPrimArray fpbs idx
     parentA <- readPrimArray fpas parent
     let next = do
-          swapElems fpas fpbs anys ks idx parent
-          normalizeD fpas fpbs anys ks idx (sizeofMutablePrimArray fpas)
+          swapElems m idx parent
+          normalizeD m idx
     if odd idx
     then case indexA `compare` parentA of
-           LT -> normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+           LT -> normalizeD m 0
            EQ -> do 
             parentB <- readPrimArray fpbs parent
             if indexB >= parentB
             then next
-            else normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+            else normalizeD m 0
            GT -> next 
     else case indexA `compare` parentA of
            LT -> next
@@ -523,12 +509,12 @@ normalize fpas fpbs anys ks idx = do
             parentB <- readPrimArray fpbs parent
             if indexB <= parentB
             then next
-            else normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+            else normalizeD m 0
            GT ->
-            normalizeD fpas fpbs anys ks 0 (sizeofMutablePrimArray fpas)
+            normalizeD m 0
   else do
-    swapElems fpas fpbs anys ks idx parent
-    normalize fpas fpbs anys ks parent
+    swapElems m idx parent
+    normalize m parent
 
 
 -- | /O(ln N)/. Normalize the tree downwards.
@@ -558,30 +544,26 @@ normalize fpas fpbs anys ks idx = do
 -- process recursively. As we go only down the tree - it's guaranteed
 -- that the number of steps is less then the height of the tree, 
 -- that is /O(ln N)/.
-normalizeD :: MutablePrimArray s Word64
-           -> MutablePrimArray s Word64
-           -> MutableArray s Any
-           -> MutableArray s Any
-           -> Int
-           -> Int
+normalizeD :: MutableTypeRepMap s -- ^ Mutable structure
+           -> Int                 -- ^ Index of the bad element
            -> ST s ()
-normalizeD fpas fpbs anys ks idx len = do
+normalizeD m@(MutableTypeRepMap fpas fpbs _ _) idx = do
   indexA <- readPrimArray fpas idx
   indexB <- readPrimArray fpbs idx
   let left = idx*2+1
       right = idx*2+2
-  let swap = swapElems fpas fpbs anys ks
+      len = sizeofMutablePrimArray fpas
   when (left < len) $ do
     leftA <- readPrimArray fpas left
     case indexA `compare` leftA of
       LT -> do
-       swap idx left
-       normalizeD fpas fpbs anys ks left len
+       swapElems m idx left
+       normalizeD m left
       EQ -> do
        leftB <- readPrimArray fpbs left
        when (indexB <= leftB) $ do
-         swap idx left
-         normalizeD fpas fpbs anys ks left len
+         swapElems m idx left
+         normalizeD m left
       GT -> do
         when (right < len) $ do
           rightA <- readPrimArray fpas right
@@ -590,11 +572,11 @@ normalizeD fpas fpbs anys ks idx len = do
             EQ -> do
              rightB <- readPrimArray fpbs right
              when (indexB >= rightB) $ do
-               swap idx right
-               normalizeD fpas fpbs anys ks right len
+               swapElems m idx right
+               normalizeD m right
             GT -> do
-             swap idx right
-             normalizeD fpas fpbs anys ks right len
+             swapElems m idx right
+             normalizeD m right
 
 -- | Swap elements in a primitive array.
 swapPrimArray :: Prim a => MutablePrimArray s a -> Int -> Int -> ST s ()
@@ -613,15 +595,50 @@ swapArray a i j = do
   writeArray a j ix
 
 -- | Swap elements in the typerep.
-swapElems :: MutablePrimArray s Word64
-          -> MutablePrimArray s Word64
-          -> MutableArray s Any
-          -> MutableArray s Any
+swapElems :: MutableTypeRepMap s
           -> Int
           -> Int
           -> ST s ()
-swapElems fpas fpbs anys ks i j = do
-  swapPrimArray fpas i j
-  swapPrimArray fpbs i j
-  swapArray anys i j
-  swapArray ks i j
+swapElems MutableTypeRepMap{..} i j = do
+  swapPrimArray mutFingerprintAs i j
+  swapPrimArray mutFingerprintBs i j
+  swapArray mutTrAnys i j
+  swapArray mutTrKeys i j
+
+-- | Allocate all structures for the 'MutableTypeRepMap'
+-- of size @n@
+newTypeRepMap :: Int -> ST s (MutableTypeRepMap s)
+newTypeRepMap n = 
+  MutableTypeRepMap
+    <$> newPrimArray n
+    <*> newPrimArray n
+    <*> newArray n (error "uninitialized element")
+    <*> newArray n (error "uninitialized element")
+
+-- | Copy a 'TypeRepMap' to the new destination.
+copyTypeRepMap :: MutableTypeRepMap s -> Int -> TypeRepMap f -> Int -> Int -> ST s ()
+copyTypeRepMap MutableTypeRepMap{..} offset TypeRepMap{..} i n = do
+  copyPrimArray mutFingerprintAs offset fingerprintAs i n
+  copyPrimArray mutFingerprintBs offset fingerprintBs i n
+  copyArray mutTrAnys offset trAnys i n
+  copyArray mutTrKeys offset trKeys i n
+
+-- | Write a new element to the give location of the mutable map.
+-- This action may break invariants, and map may need to be 
+-- normalized.
+unsafeWriteTypeRepMap :: forall a f s . Typeable a => MutableTypeRepMap s -> Int -> f a -> ST s ()
+unsafeWriteTypeRepMap MutableTypeRepMap{..} n x = do
+    writePrimArray mutFingerprintAs n wa
+    writePrimArray mutFingerprintBs n wb
+    writeArray mutTrAnys n (unsafeCoerce x)
+    writeArray mutTrKeys n (unsafeCoerce $ typeRep @a)
+  where
+    Fingerprint wa wb = typeFp @a
+
+-- | Freeze unsafe type rep map, getting a TypeRepMap
+unsafeFreezeTypeRepMap :: MutableTypeRepMap s -> ST s (TypeRepMap f)
+unsafeFreezeTypeRepMap MutableTypeRepMap{..} =
+    TypeRepMap <$> unsafeFreezePrimArray mutFingerprintAs
+               <*> unsafeFreezePrimArray mutFingerprintBs
+               <*> unsafeFreezeArray mutTrAnys
+               <*> unsafeFreezeArray mutTrKeys
