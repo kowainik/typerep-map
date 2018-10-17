@@ -372,9 +372,6 @@ typeFp = typeRepFingerprint $ typeRep @a
 toTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
 toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ trAnys tm) (GHC.toList $ trKeys tm)
 
-deleteByFst :: Eq a => a -> [(a, b, c)] -> [(a, b, c)]
-deleteByFst x = filter ((/= x) . fst3)
-
 nubByFst :: (Eq a) => [(a, b, c)] -> [(a, b, c)]
 nubByFst = nubBy ((==) `on` fst3)
 
