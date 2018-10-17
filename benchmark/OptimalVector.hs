@@ -13,7 +13,7 @@ module OptimalVector
        ( spec
        ) where
 
-import Common
+import Spec
 import Criterion.Main (bench, nf, env)
 
 import Prelude hiding (lookup)

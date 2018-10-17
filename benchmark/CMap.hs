@@ -16,7 +16,7 @@ import Criterion.Main (bench, nf, env, whnf)
 
 import Prelude hiding (lookup)
 
-import Common
+import Spec
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)

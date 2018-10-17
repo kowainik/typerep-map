@@ -13,7 +13,7 @@ module CacheMap
        ) where
 
 import Criterion.Main (bench, nf, whnf, env)
-import Common
+import Spec
 
 import Prelude hiding (lookup)
 

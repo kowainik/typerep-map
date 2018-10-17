@@ -18,7 +18,7 @@ import Criterion.Main (bench, nf, whnf, env)
 
 import Prelude hiding (lookup)
 
-import Common
+import Spec
 import Control.DeepSeq (NFData(..))
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
@@ -38,12 +38,12 @@ type TypeRepMap = DMap TypeRep
 spec :: BenchSpec
 spec = BenchSpec
   { benchLookup = Just $ \name ->
-      env mkBigMap $ \ ~(Hack bigMap) ->
+      env mkBigMap $ \ ~(DMapNF bigMap) ->
         bench name $ nf tenLookups bigMap
   , benchInsertSmall = Just $ \name -> 
       bench name $ whnf (inserts empty 10) (Proxy @ 99999)
   , benchInsertBig = Just $ \name ->
-      env mkBigMap $ \ ~(Hack bigMap) ->
+      env mkBigMap $ \ ~(DMapNF bigMap) ->
        bench name $ whnf (inserts bigMap 1) (Proxy @ 99999)
   , benchUpdateSmall = Nothing -- Not implemented
   , benchUpdateBig = Nothing -- Not implemented
@@ -82,10 +82,11 @@ buildBigMap 1 x = insert (typeRep @a) x
 buildBigMap n x = insert (typeRep @a) x
                 . buildBigMap (n - 1) (Proxy @(a + 1))
 
-newtype Hack f = Hack (TypeRepMap f)
+-- | Wrapper that provides NFData instance to the 'DMap' structure.
+newtype DMapNF f = DMapNF (TypeRepMap f)
 
-instance NFData (Hack f) where
-  rnf (Hack x) = 
+instance NFData (DMapNF f) where
+  rnf (DMapNF x) = 
     rnf . map (\(This t) -> typeRepFingerprint t) $ keys x
 
 instance GEq TypeRep where
