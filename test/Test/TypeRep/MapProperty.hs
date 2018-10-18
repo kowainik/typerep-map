@@ -15,11 +15,11 @@ import Data.Semigroup (Semigroup (..))
 import GHC.Exts (fromList)
 import GHC.Stack (HasCallStack)
 import GHC.TypeLits (Nat, SomeNat (..), someNatVal)
-import Hedgehog (MonadGen, PropertyT, forAll, property, (===))
+import Hedgehog (MonadGen, PropertyT, forAll, property, (===), assert)
 import Test.Tasty (TestName, TestTree)
 import Test.Tasty.Hedgehog (testProperty)
 
-import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), delete, insert, lookup, member)
+import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), delete, insert, lookup, member, invariantCheck)
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -41,7 +41,6 @@ test_InsertLookup :: PropertyTest
 test_InsertLookup =  prop "lookup k (insert k v m) == Just v" $ do
     m <- forAll genMap
     WrapTypeable (proxy :: IntProxy n) <- forAll genTF
-
     lookup @n @IntProxy (insert proxy m) === Just proxy
 
 test_InsertInsert :: PropertyTest
@@ -61,6 +60,18 @@ test_DeleteMember = prop "member k . delete k == False" $ do
         member @n (delete @n $ insert proxy m) === False
     else
         member @n (delete @n m) === False
+
+test_InsertInvariant :: PropertyTest
+test_InsertInvariant = prop "invariantCheck (insert k b) == True" $ do
+    m <- forAll genMap
+    WrapTypeable a <- forAll genTF
+    assert $ invariantCheck (insert a m)
+
+test_DeleteInvariant :: PropertyTest
+test_DeleteInvariant = prop "invariantCheck (delete k b) == True" $ do
+    m <- forAll genMap
+    WrapTypeable (_ :: IntProxy n) <- forAll genTF
+    assert $ invariantCheck (delete @n m)
 
 ----------------------------------------------------------------------------
 -- Semigroup and Monoid laws

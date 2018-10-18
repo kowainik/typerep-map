@@ -36,10 +36,11 @@ import Data.Function (on)
 import Data.Kind (Type)
 import Data.Type.Equality ((:~:) (..), TestEquality (..))
 import Data.List (intercalate, nubBy)
+import Data.Maybe (fromMaybe)
 import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
                              thawArray, unsafeFreezeArray, writeArray)
 import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
-import Data.Semigroup (Semigroup (..))
+import Data.Semigroup (Semigroup (..), All(..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
@@ -448,3 +449,62 @@ fromSortedList l = runST $ do
                 newFirst <- loop (2 * i + 1) first
                 writeArray result i (indexArray origin newFirst)
                 loop (2 * i + 2) (newFirst + 1)
+
+----------------------------------------------------------------------------
+--  Helper functions.
+----------------------------------------------------------------------------
+
+-- | Check that invariant of the structure is hold.
+-- The structure maintains the following invariant.
+-- For each element @A@ at index @i@:
+--
+--   1. if there is an element @B@ at index @2*i+1@, 
+--      then @B < A@.
+--
+--   2. if there is an element @C@ at index @2*i+2@, 
+--      then @A < C@.
+--
+invariantCheck :: TypeRepMap f -> Bool
+invariantCheck TypeRepMap{..} = getAll (check 0)
+  where
+    lastMay [] = Nothing
+    lastMay [x] = Just x
+    lastMay (_:xs) = lastMay xs
+    sz = sizeofPrimArray fingerprintAs
+    check i | i >= sz = All True
+            | otherwise =
+      let left = i*2+1
+          right = i*2+2
+          -- maximum value in the left branch
+          leftMax =
+               fmap (\j -> (indexPrimArray fingerprintAs j, indexPrimArray fingerprintBs j))
+             $ lastMay
+             $ takeWhile (<sz)
+             $ iterate (\j -> j*2+2) left
+          -- minimum value in the right branch
+          rightMin =
+               fmap (\j -> (indexPrimArray fingerprintAs j, indexPrimArray fingerprintBs j))
+             $ lastMay
+             $ takeWhile (<sz)
+             $ iterate (\j -> j*2+1) right
+      in mconcat
+          [ All $
+            if left < sz
+            then
+              case indexPrimArray fingerprintAs i `compare` indexPrimArray fingerprintAs left of
+                LT -> False
+                EQ -> indexPrimArray fingerprintBs i >= indexPrimArray fingerprintBs left
+                GT -> True
+            else True
+         , All $
+           if right < sz
+           then
+              case indexPrimArray fingerprintAs i `compare` indexPrimArray fingerprintAs right of
+                LT -> True
+                EQ -> indexPrimArray fingerprintBs i <= indexPrimArray fingerprintBs right
+                GT -> False
+            else True
+         , All $ fromMaybe True $ (<=) <$> leftMax <*> rightMin
+         , check (i+1)
+         ]
+
