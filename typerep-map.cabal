@@ -103,7 +103,7 @@ benchmark typerep-map-benchmark
   main-is:             Main.hs
   other-modules:       CMap
                      , CacheMap
-                     , Common
+                     , Spec
                      , Vector
                      , OptimalVector
   build-depends:       base >= 4.10 && < 5
