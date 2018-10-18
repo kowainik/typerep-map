@@ -4,7 +4,7 @@ module Main where
 
 import Criterion.Main (defaultMain, bgroup)
 
-import Common
+import Spec
 import qualified CMap
 import qualified CacheMap
 #if ( __GLASGOW_HASKELL__ >= 802 )

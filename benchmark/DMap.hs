@@ -70,8 +70,8 @@ inserts !c n x = inserts
    (Proxy :: Proxy (a+1))
 
 -- TypeRepMap of 10000 elements
-mkBigMap :: IO (Hack (Proxy :: Nat -> *))
-mkBigMap = pure . Hack $ buildBigMap 10000 (Proxy :: Proxy 0) empty
+mkBigMap :: IO (DMapNF (Proxy :: Nat -> *))
+mkBigMap = pure . DMapNF $ buildBigMap 10000 (Proxy :: Proxy 0) empty
 
 buildBigMap :: forall a . (KnownNat a)
             => Int
