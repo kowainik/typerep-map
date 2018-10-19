@@ -23,6 +23,7 @@ module Data.TypeRep.OptimalVector
 import Prelude hiding (lookup)
 
 import Control.Arrow ((&&&))
+import Control.DeepSeq
 import Data.Kind (Type)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable, typeRep, typeRepFingerprint)
@@ -40,6 +41,9 @@ data TypeRepMap (f :: k -> Type) = TypeRepMap
     , fingerprintBs :: Unboxed.Vector Word64
     , anys          :: V.Vector Any
     }
+
+instance NFData (TypeRepMap f) where
+  rnf x = x `seq` ()
 
 fromAny :: Any -> f a
 fromAny = unsafeCoerce

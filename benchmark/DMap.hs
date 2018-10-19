@@ -11,16 +11,15 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver -fno-warn-orphans #-}
 
 module DMap
-       ( benchDMap
-       , prepareBenchDMap
+       ( spec
        ) where
 
-import Criterion.Main (Benchmark, bench, bgroup, nf)
+import Criterion.Main (bench, nf, whnf, env)
 
 import Prelude hiding (lookup)
 
-import Control.DeepSeq (rnf)
-import Control.Exception
+import Spec
+import Control.DeepSeq (NFData(..))
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Type.Equality ((:~:) (..))
@@ -35,12 +34,20 @@ import Data.Some (Some (This))
 
 type TypeRepMap = DMap TypeRep
 
-benchDMap :: Benchmark
-benchDMap = bgroup "dependent map"
-   [ bench "lookup"     $ nf tenLookups bigMap
-   -- , bench "insert new" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 9999999999)
-   -- , bench "update old" $ whnf (\x -> rknf $ insert x bigMap) (Proxy :: Proxy 1)
-   ]
+
+spec :: BenchSpec
+spec = BenchSpec
+  { benchLookup = Just $ \name ->
+      env mkBigMap $ \ ~(DMapNF bigMap) ->
+        bench name $ nf tenLookups bigMap
+  , benchInsertSmall = Just $ \name -> 
+      bench name $ whnf (inserts empty 10) (Proxy @ 99999)
+  , benchInsertBig = Just $ \name ->
+      env mkBigMap $ \ ~(DMapNF bigMap) ->
+       bench name $ whnf (inserts bigMap 1) (Proxy @ 99999)
+  , benchUpdateSmall = Nothing -- Not implemented
+  , benchUpdateBig = Nothing -- Not implemented
+  }
 
 tenLookups :: TypeRepMap (Proxy :: Nat -> *)
            -> ( Proxy 10, Proxy 20, Proxy 30, Proxy 40
@@ -51,9 +58,20 @@ tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
     lp :: forall (a :: Nat) . Typeable a => Proxy a
     lp = fromJust $ lookup (typeRep @a) tmap
 
+inserts :: forall a . (KnownNat a)
+        => TypeRepMap (Proxy :: Nat -> *)
+        -> Int
+        -> Proxy (a :: Nat)
+        -> TypeRepMap (Proxy :: Nat -> *)
+inserts !c 0 _ = c
+inserts !c n x = inserts
+   (insert (typeRep @ a) x c)
+   (n-1)
+   (Proxy :: Proxy (a+1))
+
 -- TypeRepMap of 10000 elements
-bigMap :: TypeRepMap (Proxy :: Nat -> *)
-bigMap = buildBigMap 10000 (Proxy :: Proxy 0) empty
+mkBigMap :: IO (DMapNF (Proxy :: Nat -> *))
+mkBigMap = pure . DMapNF $ buildBigMap 10000 (Proxy :: Proxy 0) empty
 
 buildBigMap :: forall a . (KnownNat a)
             => Int
@@ -64,11 +82,12 @@ buildBigMap 1 x = insert (typeRep @a) x
 buildBigMap n x = insert (typeRep @a) x
                 . buildBigMap (n - 1) (Proxy @(a + 1))
 
-rknf :: TypeRepMap f -> ()
-rknf = rnf . map (\(This t) -> typeRepFingerprint t) . keys
+-- | Wrapper that provides NFData instance to the 'DMap' structure.
+newtype DMapNF f = DMapNF (TypeRepMap f)
 
-prepareBenchDMap :: IO ()
-prepareBenchDMap = evaluate (rknf bigMap)
+instance NFData (DMapNF f) where
+  rnf (DMapNF x) = 
+    rnf . map (\(This t) -> typeRepFingerprint t) $ keys x
 
 instance GEq TypeRep where
     geq :: TypeRep a -> TypeRep b -> Maybe (a :~: b)
