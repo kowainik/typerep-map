@@ -7,7 +7,7 @@
 
 `typerep-map` introduces `TMap` and `TypeRepMap` — data structures like [`Map`](http://hackage.haskell.org/package/containers-0.6.0.1/docs/Data-Map-Lazy.html#t:Map), but where types serve as keys, and values have the types specified in the corresponding key spots.
 
-For the more details on the implementation see [this blog post](https://kowainik.github.io/posts/2018-07-11-typerep-map-step-by-step.html).
+For the more details on the implementation see [this blog post](https://kowainik.github.io/posts/2018-07-11-typerep-map-step-by-step).
 
 ## Usage example
 
