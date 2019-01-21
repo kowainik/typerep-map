@@ -345,6 +345,9 @@ data WrapTypeable f where
 instance Show (WrapTypeable f) where
     show (WrapTypeable (_ :: f a)) = show $ calcFp @a
 
+wrapTypeable :: TypeRep a -> f a -> WrapTypeable f
+wrapTypeable tr = withTypeable tr WrapTypeable
+
 {- |
 
 prop> fromList . toList == 'id'
@@ -375,7 +378,7 @@ instance IsList (TypeRepMap f) where
     toList = map toWrapTypeable . toTriples
       where
         toWrapTypeable :: (Fingerprint, Any, Any) -> WrapTypeable f
-        toWrapTypeable (_, an, k) = withTypeable (unsafeCoerce k) $ fromAny an
+        toWrapTypeable (_, an, k) = wrapTypeable (unsafeCoerce k) (fromAny an)
 
 calcFp :: forall a . Typeable a => Fingerprint
 calcFp = typeRepFingerprint $ typeRep @a
