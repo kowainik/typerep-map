@@ -22,7 +22,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Kowainik, Vladislav Zavialov
 maintainer:          xrom.xkov@gmail.com
-copyright:           2017-2018 Kowainik
+copyright:           2017-2019 Kowainik
 category:            Data, Data Structures, Types
 build-type:          Simple
 extra-doc-files:     README.md
