@@ -1,4 +1,4 @@
-resolver: nightly-2018-07-05
+resolver: lts-13.4
 
 extra-deps:
-  - primitive-0.6.4.0
+  - tasty-hedgehog-0.2.0.0

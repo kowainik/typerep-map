@@ -4,6 +4,12 @@ Change log
 `typerep-map` uses [PVP Versioning][1].
 The change log is available [on GitHub][2].
 
+# 0.3.1
+
+* [#64](https://github.com/kowainik/typerep-map/issues/64):
+  Fix segfault in `toList`.
+* Support GHC 8.4.4 and 8.6.3.
+
 # 0.3.0
 
 * [#46](https://github.com/kowainik/typerep-map/issues/46):
