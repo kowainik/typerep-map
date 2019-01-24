@@ -110,10 +110,10 @@ delete = F.delete @a @Identity
 {-# INLINE delete #-}
 
 -- | The union of two 'TMap's using a combining function.
-unionWith :: (forall x. x -> x -> x) -> TMap -> TMap -> TMap
+unionWith :: (forall x. Typeable x => x -> x -> x) -> TMap -> TMap -> TMap
 unionWith f = F.unionWith fId
   where
-    fId :: forall y . Identity y -> Identity y -> Identity y
+    fId :: forall y . Typeable y => Identity y -> Identity y -> Identity y
     fId y1 y2 = Identity $ f (coerce y1) (coerce y2)
 {-# INLINE unionWith #-}
 
