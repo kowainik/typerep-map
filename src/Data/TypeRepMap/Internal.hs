@@ -220,15 +220,18 @@ hoistWithKey f (TypeRepMap as bs ans ks) = TypeRepMap as bs newAns ks
 {-# INLINE hoistWithKey #-}
 
 -- | The union of two 'TypeRepMap's using a combining function.
-unionWith :: (forall x. f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+unionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 unionWith f m1 m2 = fromTriples
                   $ toTripleList
                   $ Map.unionWith combine
                                   (fromTripleList $ toTriples m1)
                                   (fromTripleList $ toTriples m2)
   where
+    f' :: forall x. TypeRep x -> f x -> f x -> f x
+    f' tr = withTypeable tr f
+
     combine :: (Any, Any) -> (Any, Any) -> (Any, Any)
-    combine (av, ak) (bv, _) = (toAny $ f (fromAny av) (fromAny bv), ak)
+    combine (av, ak) (bv, _) = (toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
 
     fromTripleList :: Ord a => [(a, b, c)] -> Map.Map a (b, c)
     fromTripleList = Map.fromList . map (\(a, b, c) -> (a, (b, c)))
