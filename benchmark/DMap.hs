@@ -6,31 +6,27 @@
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns         #-}
 
-{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
 module DMap
        ( spec
        ) where
 
-import Criterion.Main (bench, nf, whnf, env)
+import Criterion.Main (bench, env, nf, whnf)
 
 import Prelude hiding (lookup)
 
-import Spec
-import Control.DeepSeq (NFData(..))
+import Control.DeepSeq (NFData (..))
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
-import Data.Type.Equality ((:~:) (..))
 import GHC.TypeLits
+import Spec
 import Type.Reflection (TypeRep, Typeable, typeRep)
 import Type.Reflection.Unsafe (typeRepFingerprint)
-import Unsafe.Coerce (unsafeCoerce)
 
 import Data.Dependent.Map (DMap, empty, insert, keys, lookup)
-import Data.GADT.Compare (GCompare (..), GEq (..), GOrdering (..))
-import Data.Some (Some (This))
+import Data.Some (Some (Some))
 
 type TypeRepMap = DMap TypeRep
 
@@ -40,7 +36,7 @@ spec = BenchSpec
   { benchLookup = Just $ \name ->
       env mkBigMap $ \ ~(DMapNF bigMap) ->
         bench name $ nf tenLookups bigMap
-  , benchInsertSmall = Just $ \name -> 
+  , benchInsertSmall = Just $ \name ->
       bench name $ whnf (inserts empty 10) (Proxy @ 99999)
   , benchInsertBig = Just $ \name ->
       env mkBigMap $ \ ~(DMapNF bigMap) ->
@@ -86,20 +82,5 @@ buildBigMap n x = insert (typeRep @a) x
 newtype DMapNF f = DMapNF (TypeRepMap f)
 
 instance NFData (DMapNF f) where
-  rnf (DMapNF x) = 
-    rnf . map (\(This t) -> typeRepFingerprint t) $ keys x
-
-instance GEq TypeRep where
-    geq :: TypeRep a -> TypeRep b -> Maybe (a :~: b)
-    geq (typeRepFingerprint -> a) (typeRepFingerprint -> b) =
-        if a == b
-            then Just $ unsafeCoerce Refl
-            else Nothing
-
-instance GCompare TypeRep where
-    gcompare :: TypeRep a -> TypeRep b -> GOrdering a b
-    gcompare (typeRepFingerprint -> a) (typeRepFingerprint -> b) =
-        case compare a b of
-            EQ -> unsafeCoerce GEQ
-            LT -> GLT
-            GT -> GGT
+  rnf (DMapNF x) =
+    rnf . map (\(Some t) -> typeRepFingerprint t) $ keys x
