@@ -65,28 +65,17 @@ test_DeleteMember = prop "member k . delete k == False" $ do
 -- Semigroup and Monoid laws
 ----------------------------------------------------------------------------
 
--- This newtype is used to compare 'TypeRepMap's using only 'Fingerprint's. It's
--- not a good idea to write such `Eq` instance for `TypeRepMap` itself because
--- it doesn't compare values so it's not true equality. But this should be
--- enough for tests.
-newtype FpMap f = FpMap (TypeRepMap f)
-  deriving (Show, Semigroup, Monoid)
-
-instance Eq (FpMap f) where
-    FpMap (TypeRepMap as1 bs1 _ _) == FpMap (TypeRepMap as2 bs2 _ _) =
-        as1 == as2 && bs1 == bs2
-
 test_SemigroupAssoc :: PropertyTest
 test_SemigroupAssoc = prop "x <> (y <> z) == (x <> y) <> z" $ do
-    x <- FpMap <$> forAll genMap
-    y <- FpMap <$> forAll genMap
-    z <- FpMap <$> forAll genMap
+    x <- forAll genMap
+    y <- forAll genMap
+    z <- forAll genMap
 
     (x <> (y <> z)) === ((x <> y) <> z)
 
 test_MonoidIdentity :: PropertyTest
 test_MonoidIdentity = prop "x <> mempty == mempty <> x == x" $ do
-    x <- FpMap <$> forAll genMap
+    x <- forAll genMap
 
     x <> mempty === x
     mempty <> x === x

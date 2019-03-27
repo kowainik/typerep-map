@@ -1,33 +1,40 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE InstanceSigs        #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE MagicHash           #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE Rank2Types          #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeInType          #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE InstanceSigs          #-}
+{-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE Rank2Types            #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeInType            #-}
+{-# LANGUAGE ViewPatterns          #-}
+
+#if __GLASGOW_HASKELL__ >= 806
+{-# LANGUAGE QuantifiedConstraints #-}
+#endif
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
--- | Internal API for 'TypeRepMap' and operations on it. The functions here do
--- not have any stability guarantees and can change between minor versions.
---
--- If you need to use this module for purposes other than tests,
--- create an issue.
---
+{- | Internal API for 'TypeRepMap' and operations on it. The functions here do
+not have any stability guarantees and can change between minor versions.
+
+If you need to use this module for purposes other than tests,
+create an issue.
+-}
+
 module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
 
+import Control.DeepSeq
 import Control.Monad.ST (ST, runST)
 import Control.Monad.Zip (mzip)
-import Control.DeepSeq
 import Data.Function (on)
 import Data.Kind (Type)
+import Data.Type.Equality ((:~:) (..), TestEquality (..))
 import Data.List (intercalate, nubBy)
 import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
                              thawArray, unsafeFreezeArray, writeArray)
@@ -96,6 +103,31 @@ instance Monoid (TypeRepMap f) where
     mappend = (<>)
     {-# INLINE mempty #-}
     {-# INLINE mappend #-}
+
+#if __GLASGOW_HASKELL__ >= 806
+instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
+    tm1 == tm2 = size tm1 == size tm2 && go 0
+      where
+        go :: Int -> Bool
+        go i
+            | i == size tm1 = True
+            | otherwise = case testEquality tr1i tr2i of
+                  Nothing -> False
+                  Just Refl -> repEq tr1i (fromAny tv1i) (fromAny tv2i) && go (i + 1)
+          where
+            tr1i :: TypeRep x
+            tr1i = anyToTypeRep $ indexArray (trKeys tm1) i
+
+            tr2i :: TypeRep y
+            tr2i = anyToTypeRep $ indexArray (trKeys tm2) i
+
+            tv1i, tv2i :: Any
+            tv1i = indexArray (trAnys tm1) i
+            tv2i = indexArray (trAnys tm2) i
+
+            repEq :: TypeRep x -> f x -> f x -> Bool
+            repEq tr = withTypeable tr (==)
+#endif
 
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFingerprints :: TypeRepMap f -> [Fingerprint]
