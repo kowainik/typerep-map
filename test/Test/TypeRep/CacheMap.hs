@@ -44,7 +44,7 @@ mapOf10 = insert True
         $ insert (Just ())
         $ insert [()]
         $ insert ()
-        $ insert "aaa"
+        $ insert @String "aaa"
         $ insert (Just 'a')
         $ insert 'a'
         $ insert (11 :: Int) empty

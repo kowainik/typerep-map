@@ -1,3 +1,4 @@
+cabal-version:       2.4
 name:                typerep-map
 version:             0.3.2
 synopsis:            Efficient implementation of a dependent map with types as keys
@@ -20,105 +21,97 @@ homepage:            https://github.com/kowainik/typerep-map
 bug-reports:         https://github.com/kowainik/typerep-map/issues
 license:             MIT
 license-file:        LICENSE
-author:              Kowainik, Vladislav Zavialov
-maintainer:          xrom.xkov@gmail.com
+author:              Veronika Romashkina, Vladislav Zavialov, Dmitrii Kovanikov
+maintainer:          Kowainik <xrom.xkov@gmail.com>
 copyright:           2017-2019 Kowainik
 category:            Data, Data Structures, Types
 build-type:          Simple
 extra-doc-files:     README.md
                    , CHANGELOG.md
-cabal-version:       2.0
 tested-with:         GHC == 8.2.2
                    , GHC == 8.4.4
-                   , GHC == 8.6.3
+                   , GHC == 8.6.5
 
 source-repository head
   type:                git
   location:            https://github.com/kowainik/typerep-map.git
 
+common common-options
+  build-depends:       base >= 4.10 && < 4.13
+
+  default-language:    Haskell2010
+  default-extensions:  BangPatterns
+                       OverloadedStrings
+                       RecordWildCards
+                       ScopedTypeVariables
+                       TypeApplications
+
 library
+  import:              common-options
   hs-source-dirs:      src
   exposed-modules:     Data.TMap
                        Data.TypeRepMap
                        Data.TypeRepMap.Internal
-  ghc-options:         -Wall
-  build-depends:       base >= 4.10 && < 5
-                     , containers >= 0.5.10.2 && < 0.7
+
+  build-depends:       containers >= 0.5.10.2 && < 0.7
                      , ghc-prim ^>= 0.5.1.1
                      , primitive ^>= 0.6.4
                      , deepseq ^>= 1.4
-  default-extensions:  OverloadedStrings
-                       RecordWildCards
-                       ScopedTypeVariables
-                       TypeApplications
-  default-language:    Haskell2010
 
 library typerep-extra-impls
+  import:              common-options
   hs-source-dirs:      typerep-extra-impls
   exposed-modules:     Data.TypeRep.CMap
                        Data.TypeRep.OptimalVector
                        Data.TypeRep.Vector
-  ghc-options:         -Wall
-  build-depends:       base >= 4.10 && < 5
-                     , containers >= 0.5.10.2 && < 0.7
+
+  build-depends:       containers >= 0.5.10.2 && < 0.7
                      , vector ^>= 0.12.0.1
                      , deepseq ^>= 1.4
-  default-extensions:  OverloadedStrings
-                       RecordWildCards
-                       ScopedTypeVariables
-                       TypeApplications
-
-  default-language:    Haskell2010
 
 test-suite typerep-map-test
+  import:              common-options
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
+
   main-is:             Test.hs
   other-modules:       Test.TypeRep.CMap
                      , Test.TypeRep.CacheMap
                      , Test.TypeRep.MapProperty
                      , Test.TypeRep.Vector
                      , Test.TypeRep.VectorOpt
-  build-depends:       base >= 4.10 && < 5
-                     , ghc-typelits-knownnat >= 0.4.2 && < 0.7
-                     , hedgehog >= 0.5.3 && < 0.7
+
+  build-tool-depends:  tasty-discover:tasty-discover
+  build-depends:       ghc-typelits-knownnat >= 0.4.2 && < 0.7
+                     , hedgehog ^>= 1.0
                      , typerep-map
                      , typerep-extra-impls
                      , tasty >= 1.0.1.1 && < 1.3
                      , tasty-discover >= 4.1.1 && < 4.3
-                     , tasty-hedgehog >= 0.1.0.2 && < 0.3
+                     , tasty-hedgehog ^>= 1.0.0.0
                      , tasty-hspec ^>= 1.1.5
-                     , QuickCheck >= 2.11.3 && < 2.13
-  build-tool-depends:  tasty-discover:tasty-discover
-  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
-  default-extensions:  ScopedTypeVariables
-                       TypeApplications
 
-  default-language:    Haskell2010
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
 
 benchmark typerep-map-benchmark
+  import:              common-options
   type:                exitcode-stdio-1.0
-  default-language:    Haskell2010
-  ghc-options:         -Wall -O2 -threaded -rtsopts -with-rtsopts=-N -freduction-depth=0
   hs-source-dirs:      benchmark
+
   main-is:             Main.hs
   other-modules:       CMap
                      , CacheMap
+                     , DMap
                      , Spec
                      , Vector
                      , OptimalVector
-  build-depends:       base >= 4.10 && < 5
-                     , criterion >= 1.4.1.0 && < 1.6
+
+  build-depends:       criterion >= 1.4.1.0 && < 1.6
                      , deepseq ^>= 1.4.3.0
                      , dependent-map >= 0.2.4.0 && < 0.5
                      , dependent-sum ^>= 0.5
                      , ghc-typelits-knownnat >= 0.4.2 && < 0.7
                      , typerep-map
                      , typerep-extra-impls
-  default-extensions:  OverloadedStrings
-                       RecordWildCards
-                       ScopedTypeVariables
-                       TypeApplications
-                       BangPatterns
-  if impl(ghc >= 8.2.2)
-    other-modules:     DMap
+
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N -freduction-depth=0

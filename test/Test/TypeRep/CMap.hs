@@ -35,7 +35,7 @@ mapOf10 = insert (Identity True)
         $ insert (Identity $ Just ())
         $ insert (Identity [()])
         $ insert (Identity ())
-        $ insert (Identity "aaa")
+        $ insert (Identity @String "aaa")
         $ insert (Identity $ Just 'a')
         $ insert (Identity 'a')
         $ insert (Identity (11 :: Int)) empty
