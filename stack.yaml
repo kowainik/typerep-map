@@ -1,5 +1,6 @@
-resolver: lts-13.14
+resolver: lts-13.21
 
 extra-deps:
   - dependent-sum-0.5
-  - tasty-hedgehog-0.2.0.0
+  - hedgehog-1.0
+  - tasty-hedgehog-1.0.0.0

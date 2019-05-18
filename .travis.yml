@@ -16,9 +16,9 @@ matrix:
   include:
   - ghc: 8.2.2
   - ghc: 8.4.4
-  - ghc: 8.6.3
+  - ghc: 8.6.5
 
-  - ghc: 8.6.4
+  - ghc: 8.6.5
     env: STACK_YAML="$TRAVIS_BUILD_DIR/stack.yaml"
 
 install:
