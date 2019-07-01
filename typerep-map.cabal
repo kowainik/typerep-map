@@ -55,7 +55,7 @@ library
 
   build-depends:       containers >= 0.5.10.2 && < 0.7
                      , ghc-prim ^>= 0.5.1.1
-                     , primitive ^>= 0.6.4
+                     , primitive ^>= 0.7.0
                      , deepseq ^>= 1.4
 
 library typerep-extra-impls
