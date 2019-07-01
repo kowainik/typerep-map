@@ -1,6 +1,9 @@
-resolver: lts-13.21
+resolver: lts-13.26
 
 extra-deps:
+  - aeson-1.4.4.0
   - dependent-sum-0.5
   - hedgehog-1.0
-  - tasty-hedgehog-1.0.0.0
+  - primitive-0.7.0.0
+  - tasty-hedgehog-1.0.0.1
+  - time-compat-1.9.2.2
