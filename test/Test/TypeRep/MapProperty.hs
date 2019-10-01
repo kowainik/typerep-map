@@ -83,7 +83,7 @@ test_DeleteInvariant = prop "invariantCheck (delete k b) == True" $ do
 -- it doesn't compare values so it's not true equality. But this should be
 -- enough for tests.
 newtype FpMap f = FpMap (TypeRepMap f)
-  deriving stock (Show, Semigroup, Monoid)
+  deriving newtype (Show, Semigroup, Monoid)
 
 instance Eq (FpMap f) where
     FpMap (TypeRepMap as1 bs1 _ _) == FpMap (TypeRepMap as2 bs2 _ _) =
