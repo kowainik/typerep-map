@@ -3,5 +3,3 @@ resolver: nightly-2019-09-30
 extra-deps:
   - dependent-map-0.2.4.0
   - dependent-sum-0.5
-
-allow-newer: true
