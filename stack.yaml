@@ -1,4 +1,4 @@
-resolver: nightly-2019-09-30
+resolver: lts-15.8
 
 extra-deps:
   - dependent-map-0.2.4.0

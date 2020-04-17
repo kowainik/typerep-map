@@ -2,6 +2,10 @@
 {-# LANGUAGE Rank2Types          #-}
 
 {- |
+Copyright:  (c) 2017-2020 Kowainik
+SPDX-License-Identifier: MPL-2.0
+Maintainer: Kowainik <xrom.xkov@gmail.com>
+
 'TMap' is a heterogeneous data structure similar in its essence to
 'Data.Map.Map' with types as keys, where each value has the type of its key.
 

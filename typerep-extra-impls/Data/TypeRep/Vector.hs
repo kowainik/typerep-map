@@ -7,6 +7,14 @@
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE TypeFamilies          #-}
 
+{- |
+Copyright:  (c) 2017-2020 Kowainik
+SPDX-License-Identifier: MPL-2.0
+Maintainer: Kowainik <xrom.xkov@gmail.com>
+
+TypeRepMap implementation based on Vector.
+-}
+
 module Data.TypeRep.Vector
        ( TypeRepVector (..)
        , TF (..)
@@ -32,6 +40,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as Unboxed
+
 
 data instance Unboxed.MVector s Fingerprint = MFingerprintVector (Unboxed.MVector s Word64) (Unboxed.MVector s Word64)
 data instance Unboxed.Vector Fingerprint = FingerprintVector (Unboxed.Vector Word64) (Unboxed.Vector Word64)
