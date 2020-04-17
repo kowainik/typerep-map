@@ -25,6 +25,8 @@ If you need to use this module for purposes other than tests,
 create an issue.
 -}
 
+#include "MachDeps.h"
+
 module Data.TypeRepMap.Internal where
 
 import Prelude hiding (lookup)
@@ -44,7 +46,13 @@ import Data.Semigroup (Semigroup (..), All(..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
+#if WORD_SIZE_IN_BITS >= 64
 import GHC.Prim (eqWord#, ltWord#)
+#else
+import GHC.IntWord64 (eqWord64#, ltWord64#)
+#define eqWord eqWord64
+#define ltWord ltWord64
+#endif
 import GHC.Word (Word64 (..))
 import Type.Reflection (SomeTypeRep (..), TypeRep, Typeable, typeRep, withTypeable)
 import Type.Reflection.Unsafe (typeRepFingerprint)
