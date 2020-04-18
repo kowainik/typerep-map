@@ -1,8 +1,6 @@
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
 {-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE ExplicitNamespaces   #-}
-{-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE PolyKinds            #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
@@ -34,13 +32,13 @@ spec = BenchSpec
     , benchInsertSmall = Just $ \name ->
           bench name $ whnf (inserts empty 10) (Proxy @ 99999)
     , benchInsertBig = Just $ \name ->
-        env (mkMap 10000) $ \ ~(bigMap) ->
+        env (mkMap 10000) $ \ ~bigMap ->
             bench name $ whnf (inserts bigMap 1) (Proxy @ 99999)
     , benchUpdateSmall = Just $ \name ->
-        env (mkMap 10) $ \ ~(smallMap) ->
+        env (mkMap 10) $ \ ~smallMap ->
             bench name $ whnf (inserts smallMap 10) (Proxy @ 0)
     , benchUpdateBig = Just $ \name ->
-        env (mkMap 10000) $ \ ~(bigMap) ->
+        env (mkMap 10000) $ \ ~bigMap ->
             bench name $ whnf (inserts bigMap 10) (Proxy @ 0)
     }
 

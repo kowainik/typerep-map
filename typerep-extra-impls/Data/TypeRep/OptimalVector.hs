@@ -1,9 +1,8 @@
-{-# LANGUAGE BangPatterns   #-}
-{-# LANGUAGE GADTs          #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE MagicHash      #-}
-{-# LANGUAGE PolyKinds      #-}
-{-# LANGUAGE TypeFamilies   #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE GADTs        #-}
+{-# LANGUAGE MagicHash    #-}
+{-# LANGUAGE PolyKinds    #-}
+{-# LANGUAGE TypeFamilies #-}
 
 {- |
 Copyright:  (c) 2017-2020 Kowainik

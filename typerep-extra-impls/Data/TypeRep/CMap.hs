@@ -1,5 +1,4 @@
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds      #-}
+{-# LANGUAGE PolyKinds #-}
 
 {- |
 Copyright:  (c) 2017-2020 Kowainik
