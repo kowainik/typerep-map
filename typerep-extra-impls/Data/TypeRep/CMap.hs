@@ -1,6 +1,14 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PolyKinds      #-}
 
+{- |
+Copyright:  (c) 2017-2020 Kowainik
+SPDX-License-Identifier: MPL-2.0
+Maintainer: Kowainik <xrom.xkov@gmail.com>
+
+TypeRepMap implementation based on @containers@ 'Map'.
+-}
+
 module Data.TypeRep.CMap
        ( TypeRepMap (..)
        , empty
@@ -19,6 +27,7 @@ import GHC.Base (Any)
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Map.Lazy as LMap
+
 
 -- | Map-like data structure with types served as the keys.
 newtype TypeRepMap (f :: k -> *) = TypeRepMap

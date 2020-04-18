@@ -18,7 +18,12 @@
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
-{- | Internal API for 'TypeRepMap' and operations on it. The functions here do
+{- |
+Copyright:  (c) 2017-2020 Kowainik
+SPDX-License-Identifier: MPL-2.0
+Maintainer: Kowainik <xrom.xkov@gmail.com>
+
+Internal API for 'TypeRepMap' and operations on it. The functions here do
 not have any stability guarantees and can change between minor versions.
 
 If you need to use this module for purposes other than tests,
@@ -466,10 +471,10 @@ fromSortedList l = runST $ do
 -- The structure maintains the following invariant.
 -- For each element @A@ at index @i@:
 --
---   1. if there is an element @B@ at index @2*i+1@, 
+--   1. if there is an element @B@ at index @2*i+1@,
 --      then @B < A@.
 --
---   2. if there is an element @C@ at index @2*i+2@, 
+--   2. if there is an element @C@ at index @2*i+2@,
 --      then @A < C@.
 --
 invariantCheck :: TypeRepMap f -> Bool
@@ -515,4 +520,3 @@ invariantCheck TypeRepMap{..} = getAll (check 0)
          , All $ fromMaybe True $ (<=) <$> leftMax <*> rightMin
          , check (i+1)
          ]
-

@@ -3,6 +3,17 @@
 `typerep-map` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.3.3.0 — Apr 18, 2020
+
+* [#83](https://github.com/kowainik/typerep-map/issues/83):
+  Support GHC-8.10.
+* [#80](https://github.com/kowainik/typerep-map/issues/80):
+  Build on 32-bit platforms.
+* [#78](https://github.com/kowainik/typerep-map/issues/78):
+  Support GHC-8.8.3.
+* [#63](https://github.com/kowainik/typerep-map/pull/63):
+  Add invariant check.
+
 ## 0.3.2 — Mar 27, 2019
 
 * [#47](https://github.com/kowainik/typerep-map/issues/47):
@@ -26,7 +37,6 @@ The changelog is available [on GitHub][2].
 * [#30](https://github.com/kowainik/typerep-map/issues/30):
   Rewrite `fromSortedList` to use `Array` and `MutableArray`
   instead of `IntMap`.
-
 
 ## 0.2.0
 

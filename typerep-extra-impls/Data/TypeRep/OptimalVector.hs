@@ -5,6 +5,14 @@
 {-# LANGUAGE PolyKinds      #-}
 {-# LANGUAGE TypeFamilies   #-}
 
+{- |
+Copyright:  (c) 2017-2020 Kowainik
+SPDX-License-Identifier: MPL-2.0
+Maintainer: Kowainik <xrom.xkov@gmail.com>
+
+TypeRepMap implementation based on the optimal Vector.
+-}
+
 module Data.TypeRep.OptimalVector
        ( -- * Map type
          TypeRepMap (..)
@@ -35,6 +43,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as Unboxed
+
 
 data TypeRepMap (f :: k -> Type) = TypeRepMap
     { fingerprintAs :: Unboxed.Vector Word64
