@@ -1,16 +1,18 @@
-module Test.TypeRep.VectorOpt where
+module Test.TypeRep.VectorOpt
+    ( optimalVectorSpec
+    ) where
 
 import Prelude hiding (lookup)
 
 import Data.Functor.Identity (Identity (..))
-
-import Test.Tasty.Hspec
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Data.TypeRep.OptimalVector (TF (..), fromList, lookup)
 
--- Simple test for 'lookup', 'insert' and 'size' functions.
-spec_insertLookup :: Spec
-spec_insertLookup =
+
+-- | Simple test for 'lookup', 'insert' and 'size' functions.
+optimalVectorSpec :: Spec
+optimalVectorSpec = describe "Optimal Vector TypeRep" $
     describe "Lookup Test" $ do
         it "returns the inserted element" $
             lookup (fromList [TF $ Identity 'a']) `shouldBe` Just (Identity 'a')

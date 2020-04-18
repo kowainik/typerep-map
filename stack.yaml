@@ -3,3 +3,4 @@ resolver: lts-15.8
 extra-deps:
   - dependent-map-0.2.4.0
   - dependent-sum-0.5
+  - hspec-hedgehog-0.0.1.2

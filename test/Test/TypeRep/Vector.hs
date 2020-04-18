@@ -1,16 +1,18 @@
-module Test.TypeRep.Vector where
+module Test.TypeRep.Vector
+    ( vectorSpec
+    ) where
 
 import Prelude hiding (lookup)
 
 import Data.Functor.Identity (Identity (..))
+import Test.Hspec (Spec, describe, it, shouldBe)
 
-import Test.Tasty.Hspec
+import Data.TypeRep.Vector (TF (..), fromList, lookup)
 
-import Data.TypeRep.Vector
 
--- Simple test for 'lookup', 'insert' and 'size' functions.
-spec_insertLookup :: Spec
-spec_insertLookup =
+-- | Simple test for 'lookup', 'insert' and 'size' functions.
+vectorSpec :: Spec
+vectorSpec = describe "Vector TypeRep" $
     describe "Lookup Test" $ do
         it "returns the inserted element" $
             lookup (fromList [TF (Identity 'a')]) `shouldBe` Just (Identity 'a')
