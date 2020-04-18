@@ -144,7 +144,7 @@ empty :: TypeRepVector f
 empty = TypeRepVect mempty mempty
 
 -- | Inserts the value with its type as a key.
-insert :: forall a f . Typeable a => a -> TypeRepVector f -> TypeRepVector f
+insert :: forall a f . a -> TypeRepVector f -> TypeRepVector f
 insert = undefined
 
 -- | Looks up the value at the type.
@@ -164,7 +164,7 @@ size = Unboxed.length . fingerprints
 data TF f where
   TF :: Typeable a => f a -> TF f
 
-fromF :: Typeable a => f a -> Proxy a
+fromF :: f a -> Proxy a
 fromF _ = Proxy
 
 fromList :: forall f . [TF f] -> TypeRepVector f

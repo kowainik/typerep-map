@@ -62,7 +62,7 @@ empty :: TypeRepMap f
 empty = TypeRepMap mempty mempty mempty
 
 -- | Inserts the value with its type as a key.
-insert :: forall a f . Typeable a => a -> TypeRepMap f -> TypeRepMap f
+insert :: forall a f . a -> TypeRepMap f -> TypeRepMap f
 insert = undefined
 
 -- | Looks up the value at the type.
@@ -112,7 +112,7 @@ binarySearch (Fingerprint a b) fpAs fpBs =
 data TF f where
   TF :: Typeable a => f a -> TF f
 
-fromF :: Typeable a => f a -> Proxy a
+fromF :: f a -> Proxy a
 fromF _ = Proxy
 
 fromList :: forall f . [TF f] -> TypeRepMap f
