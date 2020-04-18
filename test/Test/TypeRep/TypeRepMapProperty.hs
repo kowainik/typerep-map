@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures             #-}
 {-# LANGUAGE PolyKinds                  #-}
 
 {-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
@@ -15,9 +14,8 @@ import Prelude hiding (lookup)
 import Data.Proxy (Proxy (..))
 import Data.Semigroup (Semigroup (..))
 import GHC.Exts (fromList)
-import GHC.Stack (HasCallStack)
 import GHC.TypeLits (Nat, SomeNat (..), someNatVal)
-import Hedgehog (MonadGen, PropertyT, assert, forAll, property, (===))
+import Hedgehog (MonadGen, assert, forAll, (===))
 import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it)
 import Test.Hspec.Hedgehog (hedgehog)
 
