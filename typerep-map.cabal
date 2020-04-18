@@ -111,7 +111,7 @@ benchmark typerep-map-benchmark
   build-depends:       criterion >= 1.4.1.0 && < 1.6
                      , deepseq ^>= 1.4.3.0
                      , dependent-map >= 0.2.4.0 && < 0.5
-                     , dependent-sum ^>= 0.5
+                     , dependent-sum >= 0.5 && < 0.8
                      , ghc-typelits-knownnat >= 0.4.2 && < 0.8
                      , typerep-map
                      , typerep-extra-impls
