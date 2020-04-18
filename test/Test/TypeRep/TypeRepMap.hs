@@ -1,17 +1,20 @@
-module Test.TypeRep.CacheMap where
+module Test.TypeRep.TypeRepMap
+    ( typeRepMapSpec
+    ) where
 
 import Prelude hiding (lookup)
 
 import Data.Functor.Identity (Identity (..))
 import GHC.Exts (fromList)
-import Test.Tasty.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Data.TMap (TMap, empty, insert, lookup, one, size, union)
 import Data.TypeRepMap.Internal (WrapTypeable (..))
 
+
 -- Simple test for 'lookup', 'insert' and 'size' functions.
-spec_insertLookup :: Spec
-spec_insertLookup = do
+typeRepMapSpec :: Spec
+typeRepMapSpec = describe "TypeRepMap" $ do
     describe "Lookup Test" $ do
         it "returns the inserted element" $
             lookup (fromList [WrapTypeable $ Identity 'a']) `shouldBe` Just 'a'

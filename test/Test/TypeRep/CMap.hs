@@ -1,16 +1,18 @@
-module Test.TypeRep.CMap where
+module Test.TypeRep.CMap
+    ( cMapSpec
+    ) where
 
 import Prelude hiding (lookup)
 
 import Data.Functor.Identity (Identity (..))
+import Test.Hspec (Spec, describe, it, shouldBe)
 
-import Test.Tasty.Hspec
+import Data.TypeRep.CMap (TypeRepMap, empty, insert, lookup, size)
 
-import Data.TypeRep.CMap
 
--- Simple test for 'lookup', 'insert' and 'size' functions.
-spec_insertLookup :: Spec
-spec_insertLookup = do
+-- | Simple test for 'lookup', 'insert' and 'size' functions.
+cMapSpec :: Spec
+cMapSpec = describe "Containers Map TypeRep" $ do
     describe "Lookup Test" $ do
         it "returns the inserted element" $
             lookup (insert (Identity 'a') empty) `shouldBe` Just (Identity 'a')
