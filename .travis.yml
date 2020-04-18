@@ -10,8 +10,10 @@ cache:
 
 matrix:
   include:
-  - os: linux
-  - os: osx
+  - env: GHC='8.8.3'
+    os: linux
+  - env: GHC='8.8.3'
+    os: osx
 
 install:
   # install stack and build project
