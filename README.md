@@ -9,7 +9,9 @@
 
 `typerep-map` introduces `TMap` and `TypeRepMap` — data structures like [`Map`](http://hackage.haskell.org/package/containers-0.6.0.1/docs/Data-Map-Lazy.html#t:Map), but where types serve as keys, and values have the types specified in the corresponding key spots.
 
-For the more details on the implementation see [this blog post](https://kowainik.github.io/posts/2018-07-11-typerep-map-step-by-step).
+For the more details on the implementation see the following blog post:
+
+* [typerep-map step by step](https://kowainik.github.io/posts/2018-07-11-typerep-map-step-by-step)
 
 ## Usage example
 
@@ -49,10 +51,10 @@ False
 Tables below contain comparision with `DMap TypeRep` of ten `lookup` operations
 on structure with size `10^4`:
 
-|                | ghc-8.2.2 | ghc-8.4.3 |
-|----------------|-----------|-----------|
-| `DMap TypeRep` | 517.5 ns  | 779.9 ns  |
-| `typerep-map`  | 205.3 ns  | 187.2 ns  |
+|                | ghc-8.2.2 | ghc-8.4.3 | ghc-8.8.3 | ghc-8.10.1 |
+|----------------|-----------|-----------|-----------|------------|
+| `DMap TypeRep` | 517.5 ns  | 779.9 ns  | 1.559 μs  | 1.786 μs   |
+| `typerep-map`  | 205.3 ns  | 187.2 ns  | 190.1 ns  | 169.1 ns   |
 
  ghc-8.2.2 |  ghc-8.4.3
 :---------:|:-----------:
