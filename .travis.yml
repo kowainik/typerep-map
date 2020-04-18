@@ -1,46 +1,28 @@
 sudo: true
-language: haskell
+language: generic
 
 git:
   depth: 5
 
-cabal: "3.0"
-
 cache:
   directories:
-  - "$HOME/.cabal/store"
   - "$HOME/.stack"
-  - "$TRAVIS_BUILD_DIR/.stack-work"
 
 matrix:
   include:
-  - ghc: 8.2.2
-  - ghc: 8.4.4
-  - ghc: 8.6.5
-  - ghc: 8.8.3
-  - ghc: 8.10.1
-
-  - ghc: 8.8.3
-    env: STACK_YAML="$TRAVIS_BUILD_DIR/stack.yaml"
+  - env: GHC='8.8.3'
+    os: linux
+  - env: GHC='8.8.3'
+    os: osx
 
 install:
-  - |
-    if [ -z "$STACK_YAML" ]; then
-      cabal update
-      cabal build --enable-tests --enable-benchmarks
-    else
-      curl -sSL https://get.haskellstack.org/ | sh
-      stack --version
-      stack build --system-ghc --test --no-run-tests
-    fi
+  # install stack and build project
+  - curl -sSL https://get.haskellstack.org/ | sh
+  - stack --version
+  - stack build --test --no-run-tests --bench --no-run-benchmarks
 
 script:
-  - |
-    if [ -z "$STACK_YAML" ]; then
-      cabal test --enable-tests
-    else
-      stack build --system-ghc --test --bench --no-run-benchmarks --no-terminal --ghc-options=-Werror
-    fi
+  - stack test --no-terminal
 
 notifications:
   email: false
