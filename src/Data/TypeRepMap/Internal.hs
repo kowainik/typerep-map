@@ -266,8 +266,8 @@ hoistWithKey f (TypeRepMap as bs ans ks) = TypeRepMap as bs newAns ks
 
 -- | The union of two 'TypeRepMap's using a combining function for conflicting entries
 unionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
-unionWith f (toList -> fromList -> ma) (toList -> fromList -> mb) = do
-    fromTriples $ mergeMaps orderingM1 orderingM2
+unionWith f ma mb = do
+    fromSortedTriples $ mergeMaps orderingM1 orderingM2
   where
     -- If we pull elements out of the map according to this list of indexes
     -- they should come out in strictly increasing order according to their fingerprint.
