@@ -279,10 +279,11 @@ unionWith f m1 m2 = do
     combine :: (Fingerprint, Any, Any) -> (Fingerprint, Any, Any) -> (Fingerprint, Any, Any)
     combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
 
+    -- Merges two typrepmaps into a sorted, dedup'd list of triples.
     mergeMaps :: (TypeRepMap f, [Int]) -> (TypeRepMap f, [Int]) -> [(Fingerprint, Any, Any)]
     mergeMaps (_, []) (_, []) = []
-    mergeMaps (as, _) (_, []) = toTriples as
-    mergeMaps (_, []) (bs, _) = toTriples bs
+    mergeMaps (am, ai:ais) (bm, []) = lookupTriple am ai : mergeMaps (am, ais) (bm, [])
+    mergeMaps (am, []) (bm, bi:bis) = lookupTriple bm bi : mergeMaps (am, []) (bm, bis)
     mergeMaps (am, ai : ais) (bm, bi : bis) =
         let af = lookupFingerprint am ai
             bf = lookupFingerprint bm bi
@@ -451,10 +452,13 @@ calcFp :: forall a . Typeable a => Fingerprint
 calcFp = typeRepFingerprint $ typeRep @a
 
 fromTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
-fromTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans) (GHC.fromList ks)
+fromTriples kvs = fromSortedTriples . sortWith fst3 . nubByFst $ kvs
+
+fromSortedTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
+fromSortedTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans) (GHC.fromList ks)
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
-    (fps, ans, ks) = unzip3 $ fromSortedList $ sortWith fst3 $ nubByFst kvs
+    (fps, ans, ks) = unzip3 $ fromSortedList kvs
 
 ----------------------------------------------------------------------------
 -- Tree-like conversion
