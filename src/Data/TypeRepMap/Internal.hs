@@ -47,7 +47,7 @@ import Data.List (intercalate, nubBy)
 import Data.Maybe (fromMaybe)
 import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
                              thawArray, unsafeFreezeArray, writeArray)
-import Data.Primitive.PrimArray (primArrayToList, writePrimArray, PrimArray, MutablePrimArray, indexPrimArray, sizeofPrimArray, newPrimArray, unsafeFreezePrimArray)
+import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..), All(..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
@@ -64,7 +64,6 @@ import Type.Reflection (SomeTypeRep (..), TypeRep, Typeable, typeRep, withTypeab
 import Type.Reflection.Unsafe (typeRepFingerprint)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
 
 {- |
@@ -486,19 +485,8 @@ fromSortedList l = runST $ do
 -- fromSortedList of the provided length.
 -- I.e. fmap (fromSortedList [1, 2, 3, 4, 5] !!) (generateOrderMapping 5) == [1, 2, 3, 4, 5]
 generateOrderMapping :: Int -> [Int]
-generateOrderMapping len = runST $ do 
-    orderMappingArr <- newPrimArray len
-    _ <- loop orderMappingArr 0 0
-    primArrayToList <$> unsafeFreezePrimArray orderMappingArr
-    where
-    loop :: MutablePrimArray s Int -> Int -> Int -> ST s Int
-    loop result i first =
-        if i >= len
-        then pure first
-        else do
-            newFirst <- loop result (2 * i + 1) first
-            writePrimArray result newFirst i
-            loop result (2 * i + 2) (newFirst + 1)
+generateOrderMapping 0 = []
+generateOrderMapping len = fromSortedList [0..len-1]
 
 ----------------------------------------------------------------------------
 --  Helper functions.
