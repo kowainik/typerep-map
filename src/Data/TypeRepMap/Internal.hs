@@ -47,7 +47,7 @@ import Data.List (intercalate, nubBy)
 import Data.Maybe (fromMaybe)
 import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
                              thawArray, unsafeFreezeArray, writeArray)
-import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
+import Data.Primitive.PrimArray (primArrayFromListN, PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..), All(..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
@@ -169,7 +169,12 @@ prop> member @a (one (x :: f a)) == True
 
 -}
 one :: forall a f . Typeable a => f a -> TypeRepMap f
-one x = insert x empty
+one x = TypeRepMap (primArrayFromListN 1 [fa])
+                   (primArrayFromListN 1 [fb])
+                   (pure v)
+                   (pure k)
+  where
+    (Fingerprint fa fb, v, k) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
 {-# INLINE one #-}
 
 {- |
@@ -181,13 +186,7 @@ prop> member @a (insert (x :: f a) tm) == True
 
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
-insert x = fromTriples . addX . toTriples
-  where
-    tripleX :: (Fingerprint, Any, Any)
-    tripleX@(fpX, _, _) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
-
-    addX :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
-    addX l = tripleX : deleteByFst fpX l
+insert x = union (one x)
 {-# INLINE insert #-}
 
 -- Extract the kind of a type. We use it to work around lack of syntax for
@@ -298,10 +297,10 @@ unionWith f m1 m2 = do
              GT -> lookupTriple bm bi : mergeMaps (am, ai : ais) (bm, bis)
 
     lookupFingerprint :: TypeRepMap f -> Int -> Fingerprint
-    lookupFingerprint m i = 
+    lookupFingerprint m i =
         Fingerprint (indexPrimArray (fingerprintAs m) i) (indexPrimArray (fingerprintBs m) i)
     lookupTriple :: TypeRepMap f -> Int -> (Fingerprint, Any, Any)
-    lookupTriple m i = 
+    lookupTriple m i =
         ((lookupFingerprint m i), indexArray (trAnys m) i, indexArray (trKeys m) i)
 {-# INLINE unionWith #-}
 
