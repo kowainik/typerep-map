@@ -264,14 +264,14 @@ hoistWithKey f (TypeRepMap as bs ans ks) = TypeRepMap as bs newAns ks
     withTr t = withTypeable t f
 {-# INLINE hoistWithKey #-}
 
--- | The union of two 'TypeRepMap's using a combining function.
+-- | The union of two 'TypeRepMap's using a combining function for conflicting entries
 unionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
-unionWith f m1 m2 = do
-    fromSortedTriples $ mergeMaps (m1, orderingM1) (m2, orderingM2)
+unionWith f ma mb = do
+    fromSortedTriples $ mergeMaps orderingM1 orderingM2
   where
     orderingM1, orderingM2 :: [Int]
-    orderingM1 = generateOrderMapping (size m1)
-    orderingM2 = generateOrderMapping (size m2)
+    orderingM1 = generateOrderMapping (size ma)
+    orderingM2 = generateOrderMapping (size mb)
     f' :: forall x. TypeRep x -> f x -> f x -> f x
     f' tr = withTypeable tr f
 
@@ -279,22 +279,31 @@ unionWith f m1 m2 = do
     combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
 
     -- Merges two typrepmaps into a sorted, dedup'd list of triples.
-    mergeMaps :: (TypeRepMap f, [Int]) -> (TypeRepMap f, [Int]) -> [(Fingerprint, Any, Any)]
-    mergeMaps (_, []) (_, []) = []
-    mergeMaps (am, ai:ais) (bm, []) = lookupTriple am ai : mergeMaps (am, ais) (bm, [])
-    mergeMaps (am, []) (bm, bi:bis) = lookupTriple bm bi : mergeMaps (am, []) (bm, bis)
-    mergeMaps (am, ai : ais) (bm, bi : bis) =
-        let af = lookupFingerprint am ai
-            bf = lookupFingerprint bm bi
+    mergeMaps :: [Int] -> [Int] -> [(Fingerprint, Any, Any)]
+    -- We've addressed all elements from both maps
+    mergeMaps [] [] = []
+    -- No remaining keys in b; insert all values from a one at a time.
+    mergeMaps (ai:ais) [] = lookupTriple ma ai : mergeMaps ais []
+    -- No remaining keys in a; insert all values from a one at b time.
+    mergeMaps [] (bi:bis) = lookupTriple mb bi : mergeMaps [] bis
+    -- Keys remaining in both maps, we need to merge them
+    mergeMaps (ai : ais) (bi : bis) =
+        -- Look up the smallest fingerprint in each map
+        let af = lookupFingerprint ma ai
+            bf = lookupFingerprint mb bi
          in case compare af bf of
             -- Fingerprints are equal, union the elements using our function
+            -- If the incoming maps were de-duped, there shouldn't be any other equivalent
+            -- fingerprints
              EQ ->
-                 combine (lookupTriple am ai) (lookupTriple bm bi)
-                   : mergeMaps (am, ais) (bm, bis)
-             -- First fingerprint must not be in the second map, add it to the result as-is
-             LT -> lookupTriple am ai : mergeMaps (am, ais) (bm, bi : bis)
-             -- Second fingerprint must not be in the first list, add it to the result
-             GT -> lookupTriple bm bi : mergeMaps (am, ai : ais) (bm, bis)
+                 combine (lookupTriple ma ai) (lookupTriple mb bi)
+                   : mergeMaps ais bis
+             -- First fingerprint must not be in the second map or we would have seen it by now
+             -- Add it to the result as-is
+             LT -> lookupTriple ma ai : mergeMaps ais (bi : bis)
+             -- Second fingerprint must not be in the first map or we would have seen it by now
+             -- Add it to the result as-is
+             GT -> lookupTriple mb bi : mergeMaps (ai : ais) bis
 
     lookupFingerprint :: TypeRepMap f -> Int -> Fingerprint
     lookupFingerprint m i =
