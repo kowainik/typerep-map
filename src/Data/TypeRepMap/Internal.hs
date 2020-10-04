@@ -213,7 +213,10 @@ False
 True
 -}
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
-delete = fromTriples . deleteByFst (typeFp @a) . toTriples
+delete m 
+  | not (member @a m) = m
+  | size m == 1 = empty
+  | otherwise = fromSortedTriples . filter ((/= typeFp @a) . fst3) . toSortedTriples $ m
 {-# INLINE delete #-}
 
 {- |
@@ -406,9 +409,6 @@ toSortedTriples tm = trip <$> ordering
              , indexArray (trKeys tm) i)
     ordering :: [ Int ]
     ordering = generateOrderMapping (size tm)
-
-deleteByFst :: Eq a => a -> [(a, b, c)] -> [(a, b, c)]
-deleteByFst x = filter ((/= x) . fst3)
 
 nubByFst :: (Eq a) => [(a, b, c)] -> [(a, b, c)]
 nubByFst = nubBy ((==) `on` fst3)
