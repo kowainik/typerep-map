@@ -186,7 +186,13 @@ prop> member @a (insert (x :: f a) tm) == True
 
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
-insert x = union (one x)
+insert x = fromTriples . addX . toTriples
+  where
+    tripleX :: (Fingerprint, Any, Any)
+    tripleX@(fpX, _, _) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
+
+    addX :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
+    addX l = tripleX : deleteByFst fpX l
 {-# INLINE insert #-}
 
 -- Extract the kind of a type. We use it to work around lack of syntax for
