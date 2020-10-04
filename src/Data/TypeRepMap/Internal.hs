@@ -287,7 +287,7 @@ unionWith f ma mb = do
     mergeMaps as [] = as
     mergeMaps [] bs = bs
     -- Merge
-    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs) 
+    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs)
       -- Fingerprints are equal, union the elements using our function
       -- If the incoming maps were de-duped, there shouldn't be any other equivalent
       -- fingerprints
@@ -492,7 +492,7 @@ fromSortedList l = runST $ do
 -- fromSortedList of the provided length.
 -- I.e. fmap (fromSortedList [1, 2, 3, 4, 5] !!) (generateOrderMapping 5) == [1, 2, 3, 4, 5]
 generateOrderMapping :: Int -> [Int]
-generateOrderMapping len = runST $ do 
+generateOrderMapping len = runST $ do
     orderMappingArr <- newPrimArray len
     _ <- loop orderMappingArr 0 0
     primArrayToList <$> unsafeFreezePrimArray orderMappingArr
