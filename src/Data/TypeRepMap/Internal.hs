@@ -267,13 +267,8 @@ hoistWithKey f (TypeRepMap as bs ans ks) = TypeRepMap as bs newAns ks
 -- | The union of two 'TypeRepMap's using a combining function for conflicting entries
 unionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 unionWith f ma mb = do
-    fromSortedTriples $ mergeMaps orderingM1 orderingM2
+    fromSortedTriples $ mergeMaps (toSortedTriples ma) (toSortedTriples mb)
   where
-    -- If we pull elements out of the map according to this list of indexes
-    -- they should come out in strictly increasing order according to their fingerprint.
-    orderingM1, orderingM2 :: [Int]
-    orderingM1 = generateOrderMapping (size ma)
-    orderingM2 = generateOrderMapping (size mb)
     f' :: forall x. TypeRep x -> f x -> f x -> f x
     f' tr = withTypeable tr f
 
@@ -281,38 +276,20 @@ unionWith f ma mb = do
     combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
 
     -- Merges two typrepmaps into a sorted, dedup'd list of triples.
-    mergeMaps :: [Int] -> [Int] -> [(Fingerprint, Any, Any)]
+    mergeMaps :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
     -- We've addressed all elements from both maps
-    mergeMaps [] [] = []
-    -- No remaining keys in b; insert all values from a one at a time.
-    mergeMaps (ai:ais) [] = lookupTriple ma ai : mergeMaps ais []
-    -- No remaining keys in a; insert all values from a one at b time.
-    mergeMaps [] (bi:bis) = lookupTriple mb bi : mergeMaps [] bis
-    -- Keys remaining in both maps, we need to merge them
-    mergeMaps (ai : ais) (bi : bis) =
-        -- Look up the smallest fingerprint in each map
-        let af = lookupFingerprint ma ai
-            bf = lookupFingerprint mb bi
-         in case compare af bf of
-            -- Fingerprints are equal, union the elements using our function
-            -- If the incoming maps were de-duped, there shouldn't be any other equivalent
-            -- fingerprints
-             EQ ->
-                 combine (lookupTriple ma ai) (lookupTriple mb bi)
-                   : mergeMaps ais bis
-             -- First fingerprint must not be in the second map or we would have seen it by now
-             -- Add it to the result as-is
-             LT -> lookupTriple ma ai : mergeMaps ais (bi : bis)
-             -- Second fingerprint must not be in the first map or we would have seen it by now
-             -- Add it to the result as-is
-             GT -> lookupTriple mb bi : mergeMaps (ai : ais) bis
-
-    lookupFingerprint :: TypeRepMap f -> Int -> Fingerprint
-    lookupFingerprint m i =
-        Fingerprint (indexPrimArray (fingerprintAs m) i) (indexPrimArray (fingerprintBs m) i)
-    lookupTriple :: TypeRepMap f -> Int -> (Fingerprint, Any, Any)
-    lookupTriple m i =
-        ((lookupFingerprint m i), indexArray (trAnys m) i, indexArray (trKeys m) i)
+    mergeMaps as [] = as
+    mergeMaps [] bs = bs
+    -- Merge
+    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs) 
+      -- Fingerprints are equal, union the elements using our function
+      -- If the incoming maps were de-duped, there shouldn't be any other equivalent
+      -- fingerprints
+      | af == bf = combine a b : mergeMaps as bs
+      -- First fingerprint must not be in the second map or we would have seen it by now
+      -- Add it to the result as-is
+      | af < bf = a : mergeMaps as (b : bs)
+      | otherwise = b : mergeMaps (a:as) bs
 {-# INLINE unionWith #-}
 
 -- | The (left-biased) union of two 'TypeRepMap's. It prefers the first map when
@@ -401,6 +378,16 @@ typeFp = typeRepFingerprint $ typeRep @a
 
 toTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
 toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ trAnys tm) (GHC.toList $ trKeys tm)
+
+-- Efficiently get sorted triples from a map in O(n) time
+toSortedTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
+toSortedTriples tm = trip <$> ordering
+  where
+    trip i = ( Fingerprint (indexPrimArray (fingerprintAs tm) i) (indexPrimArray (fingerprintBs tm) i)
+             , indexArray (trAnys tm) i
+             , indexArray (trKeys tm) i)
+    ordering :: [ Int ]
+    ordering = generateOrderMapping (size tm)
 
 deleteByFst :: Eq a => a -> [(a, b, c)] -> [(a, b, c)]
 deleteByFst x = filter ((/= x) . fst3)
