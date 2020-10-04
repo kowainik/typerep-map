@@ -20,7 +20,7 @@ import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it)
 import Test.Hspec.Hedgehog (hedgehog)
 
 import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), delete, insert, invariantCheck,
-                                 lookup, member, generateOrderMapping, fromSortedList)
+                                 lookup, member, generateOrderMapping, fromSortedList, alter)
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -34,6 +34,9 @@ typeRepMapPropertySpec = describe "TypeRepMap Property tests" $ do
         deleteMemberSpec
         insertInvariantSpec
         deleteInvariantSpec
+        alterReplaceSpec
+        alterDeleteSpec
+        alterModifySpec
     describe "Internal helpers" $ do
         generateOrderMappingInvariantSpec
     describe "Instance Laws" $ do
@@ -81,6 +84,30 @@ deleteInvariantSpec = it "invariantCheck (delete k b) == True" $ hedgehog $ do
     m <- forAll genMap
     WrapTypeable (_ :: IntProxy n) <- forAll genTF
     assert $ invariantCheck (delete @n m)
+
+alterReplaceSpec :: Property
+alterReplaceSpec = it "lookup k (alter (const (Just v) m)) == Just v" $ hedgehog $ do
+    m <- forAll genMap
+    WrapTypeable (proxy :: IntProxy n) <- forAll genTF
+    lookup @n @IntProxy (alter (const (Just proxy)) m) === Just proxy
+
+alterDeleteSpec :: Property
+alterDeleteSpec = it "lookup k (alter (const Nothing m)) == Nothing" $ hedgehog $ do
+    m <- forAll genMap
+    WrapTypeable (_ :: IntProxy n) <- forAll genTF
+    lookup @n @IntProxy (alter (const (Nothing @(IntProxy n))) m) === Nothing
+
+alterModifySpec :: Property
+alterModifySpec = it "lookup k (alter f) == f (lookup k m)" $ hedgehog $ do
+    m <- forAll genMap
+    WrapTypeable (_ :: IntProxy n) <- forAll genTF
+    randInt <- forAll (Gen.int Range.constantBounded)
+    -- Function with some interesting behaviour, which inserts, seletes and modifies
+    let f Nothing = Just (IntProxy Proxy randInt)
+        f (Just (IntProxy p n))
+          | even n = Nothing
+          | otherwise = Just $ IntProxy p (n * 10)
+    lookup @n @IntProxy (alter @n f m) === f (lookup @n @IntProxy m)
 
 ----------------------------------------------------------------------------
 -- Internal helpers

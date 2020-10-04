@@ -39,6 +39,7 @@ module Data.TMap
        , union
        , map
        , adjust
+       , alter
 
          -- * Query
        , lookup
@@ -169,6 +170,15 @@ map f = F.hoistWithKey (liftToIdentity f)
 adjust :: Typeable a => (a -> a) -> TMap -> TMap
 adjust f = F.adjust (liftToIdentity f)
 {-# INLINE adjust #-}
+
+-- | Updates a value at a specific key, whether or not it exists.
+--   This can be used to insert, delete, or update a value of a given type in the map.
+alter :: Typeable a => (Maybe a -> Maybe a) -> TMap -> TMap
+alter f = F.alter (liftF f)
+  where
+    liftF :: forall a. (Maybe a -> Maybe a) -> Maybe (Identity a) -> Maybe (Identity a)
+    liftF = coerce
+{-# INLINE alter #-}
 
 liftToIdentity :: forall a. (a -> a) -> Identity a -> Identity a
 liftToIdentity = coerce

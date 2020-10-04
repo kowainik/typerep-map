@@ -45,7 +45,7 @@ import Data.Kind (Type)
 import Data.Type.Equality ((:~:) (..), TestEquality (..))
 import Data.List (intercalate, nubBy)
 import Data.Maybe (fromMaybe)
-import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
+import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', sizeofArray,
                              thawArray, unsafeFreezeArray, writeArray)
 import Data.Primitive.PrimArray (writePrimArray, newPrimArray, unsafeFreezePrimArray, primArrayToList, MutablePrimArray, primArrayFromListN, PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..), All(..))
@@ -217,26 +217,46 @@ delete = fromTriples . deleteByFst (typeFp @a) . toTriples
 {-# INLINE delete #-}
 
 {- |
-Update a value at a specific key with the result of the provided function. When
-the key is not a member of the map, the original map is returned.
+Update a value at a specific key with the result of the provided function. 
+When the key is not a member of the map, the original map is returned.
 
 >>> trmap = fromList @(TypeRepMap Identity) [WrapTypeable $ Identity "a"]
 >>> lookup @String $ adjust (fmap (++ "ww")) trmap
 Just (Identity "aww")
 -}
 adjust :: forall a f . Typeable a => (f a -> f a) -> TypeRepMap f -> TypeRepMap f
-adjust fun tr = case cachedBinarySearch (typeFp @a) (fingerprintAs tr) (fingerprintBs tr) of
-    Nothing -> tr
-    Just i  -> tr {trAnys = changeAnyArr i (trAnys tr)}
+adjust fun tr = alter (fmap fun) tr
+{-# INLINE adjust #-}
+
+{- |
+Updates a value at a specific key, whether or not it exists.
+This can be used to insert, delete, or update a value of a given type in the map.
+
+>>> func = (\case Nothing -> Just (Identity "new"); Just (Identity s) -> Just (Identity (reverse s)))
+>>> lookup @String $ alter func empty
+Just (Identity "new")
+>>> trmap = fromList @(TypeRepMap Identity) [WrapTypeable $ Identity "helllo"]
+>>> lookup @String $ alter func trmap
+>>> Just (Identity "olleh")
+-}
+alter :: forall a f . Typeable a => (Maybe (f a) -> Maybe (f a)) -> TypeRepMap f -> TypeRepMap f
+alter fun tr = case cachedBinarySearch (typeFp @a) (fingerprintAs tr) (fingerprintBs tr) of
+    Nothing ->
+        case (fun Nothing) of
+            Nothing -> tr
+            Just v -> insert v tr
+    Just i  ->
+        case fun (Just . fromAny $ indexArray (trAnys tr) i) of
+            Nothing -> delete @a tr
+            Just v -> tr{trAnys = replaceAnyAt i (toAny v) (trAnys tr)}
   where
-    changeAnyArr :: Int -> Array Any -> Array Any
-    changeAnyArr i trAs = runST $ do
+    replaceAnyAt :: Int -> Any -> Array Any -> Array Any
+    replaceAnyAt i v trAs = runST $ do
         let n = sizeofArray trAs
         mutArr <- thawArray trAs 0 n
-        a <- toAny . fun . fromAny <$> readArray mutArr i
-        writeArray mutArr i a
+        writeArray mutArr i v
         unsafeFreezeArray mutArr
-{-# INLINE adjust #-}
+{-# INLINE alter #-}
 
 {- | Map over the elements of a 'TypeRepMap'.
 
