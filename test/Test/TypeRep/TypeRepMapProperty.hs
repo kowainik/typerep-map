@@ -20,7 +20,7 @@ import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it)
 import Test.Hspec.Hedgehog (hedgehog)
 
 import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), delete, insert, invariantCheck,
-                                 lookup, member)
+                                 lookup, member, generateOrderMapping, fromSortedList)
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -34,6 +34,8 @@ typeRepMapPropertySpec = describe "TypeRepMap Property tests" $ do
         deleteMemberSpec
         insertInvariantSpec
         deleteInvariantSpec
+    describe "Internal helpers" $ do
+        generateOrderMappingInvariantSpec
     describe "Instance Laws" $ do
         semigroupAssocSpec
         monoidIdentitySpec
@@ -79,6 +81,15 @@ deleteInvariantSpec = it "invariantCheck (delete k b) == True" $ hedgehog $ do
     m <- forAll genMap
     WrapTypeable (_ :: IntProxy n) <- forAll genTF
     assert $ invariantCheck (delete @n m)
+
+----------------------------------------------------------------------------
+-- Internal helpers
+----------------------------------------------------------------------------
+generateOrderMappingInvariantSpec :: Property
+generateOrderMappingInvariantSpec = 
+    it "fmap (fromSortedList [1 .. n] !!) (generateOrderMapping n) == [1 .. n]" $ hedgehog $ do
+        n <- forAll $ Gen.int (Range.linear 0 100)
+        fmap (fromSortedList [1 .. n] !!) (generateOrderMapping n) === [1 .. n]
 
 ----------------------------------------------------------------------------
 -- Semigroup and Monoid laws
