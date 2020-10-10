@@ -73,8 +73,7 @@ library
                        Data.TypeRepMap
                        Data.TypeRepMap.Internal
 
-  build-depends:       containers >= 0.5.10.2 && < 0.7
-                     , ghc-prim >= 0.5.1.1 && < 0.7
+  build-depends:       ghc-prim >= 0.5.1.1 && < 0.7
                      , primitive ^>= 0.7.0
                      , deepseq ^>= 1.4
 

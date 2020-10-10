@@ -47,7 +47,7 @@ import Data.List (intercalate, nubBy)
 import Data.Maybe (fromMaybe)
 import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', readArray, sizeofArray,
                              thawArray, unsafeFreezeArray, writeArray)
-import Data.Primitive.PrimArray (PrimArray, indexPrimArray, sizeofPrimArray)
+import Data.Primitive.PrimArray (writePrimArray, newPrimArray, unsafeFreezePrimArray, primArrayToList, MutablePrimArray, primArrayFromListN, PrimArray, indexPrimArray, sizeofPrimArray)
 import Data.Semigroup (Semigroup (..), All(..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
@@ -64,7 +64,6 @@ import Type.Reflection (SomeTypeRep (..), TypeRep, Typeable, typeRep, withTypeab
 import Type.Reflection.Unsafe (typeRepFingerprint)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.Map.Strict as Map
 import qualified GHC.Exts as GHC (fromList, toList)
 
 {- |
@@ -170,7 +169,12 @@ prop> member @a (one (x :: f a)) == True
 
 -}
 one :: forall a f . Typeable a => f a -> TypeRepMap f
-one x = insert x empty
+one x = TypeRepMap (primArrayFromListN 1 [fa])
+                   (primArrayFromListN 1 [fb])
+                   (pure @Array v)
+                   (pure @Array k)
+  where
+    (Fingerprint fa fb, v, k) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
 {-# INLINE one #-}
 
 {- |
@@ -266,28 +270,42 @@ hoistWithKey f (TypeRepMap as bs ans ks) = TypeRepMap as bs newAns ks
     withTr t = withTypeable t f
 {-# INLINE hoistWithKey #-}
 
--- | The union of two 'TypeRepMap's using a combining function.
+-- | The union of two 'TypeRepMap's using a combining function for conflicting entries. @O(n + m)@
 unionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
-unionWith f m1 m2 = fromTriples
-                  $ toTripleList
-                  $ Map.unionWith combine
-                                  (fromTripleList $ toTriples m1)
-                                  (fromTripleList $ toTriples m2)
+unionWith f ma mb = do
+    fromSortedTriples $ mergeMaps (toSortedTriples ma) (toSortedTriples mb)
   where
     f' :: forall x. TypeRep x -> f x -> f x -> f x
     f' tr = withTypeable tr f
 
-    combine :: (Any, Any) -> (Any, Any) -> (Any, Any)
-    combine (av, ak) (bv, _) = (toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
+    combine :: (Fingerprint, Any, Any) -> (Fingerprint, Any, Any) -> (Fingerprint, Any, Any)
+    combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
 
-    fromTripleList :: Ord a => [(a, b, c)] -> Map.Map a (b, c)
-    fromTripleList = Map.fromList . map (\(a, b, c) -> (a, (b, c)))
-
-    toTripleList :: Map.Map a (b, c) -> [(a, b, c)]
-    toTripleList = map (\(a, (b, c)) -> (a, b, c)) . Map.toList
+    -- Merges two typrepmaps into a sorted, dedup'd list of triples.
+    -- Using 'toSortedTriples' allows us to assume the triples are sorted by fingerprint,
+    -- Given O(n) performance from 'toSortedTriples', and given that we can merge-sort in
+    -- O(n + m) time, then can '.fromSortedTriples' back into cachedBinarySearch order in O(n + m)
+    -- that gives a total of O(n + m).
+    mergeMaps :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
+    -- We've addressed all elements from both maps
+    mergeMaps as [] = as
+    mergeMaps [] bs = bs
+    -- Merge
+    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs) =
+        case compare af bf of
+            -- Fingerprints are equal, union the elements using our function
+            -- If the incoming maps were de-duped, there shouldn't be any other equivalent
+            -- fingerprints
+            EQ -> combine a b : mergeMaps as bs
+            -- First fingerprint must not be in the second map or we would have seen it by now
+            -- Add it to the result as-is
+            LT -> a : mergeMaps as (b : bs)
+            -- Second fingerprint must not be in the first map or we would have seen it by now
+            -- Add it to the result as-is
+            GT -> b : mergeMaps (a:as) bs
 {-# INLINE unionWith #-}
 
--- | The (left-biased) union of two 'TypeRepMap's. It prefers the first map when
+-- | The (left-biased) union of two 'TypeRepMap's in @O(n + m)@. It prefers the first map when
 -- duplicate keys are encountered, i.e. @'union' == 'unionWith' const@.
 union :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 union = unionWith const
@@ -374,6 +392,21 @@ typeFp = typeRepFingerprint $ typeRep @a
 toTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
 toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ trAnys tm) (GHC.toList $ trKeys tm)
 
+-- | Efficiently get sorted triples from a map in O(n) time
+--
+-- We assume the incoming TypeRepMap is already sorted into 'cachedBinarySearch' order using fromSortedList.
+-- Then we can construct the index mapping from the "cached" ordering into monotonically 
+-- increasing order using 'generateOrderMapping' with the length of the TRM. This takes @O(n).
+-- We then pull those indexes from the source TRM to get the sorted triples in a total of @O(n).
+toSortedTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
+toSortedTriples tm = trip <$> ordering
+  where
+    trip i = ( Fingerprint (indexPrimArray (fingerprintAs tm) i) (indexPrimArray (fingerprintBs tm) i)
+             , indexArray (trAnys tm) i
+             , indexArray (trKeys tm) i)
+    ordering :: [ Int ]
+    ordering = generateOrderMapping (size tm)
+
 deleteByFst :: Eq a => a -> [(a, b, c)] -> [(a, b, c)]
 deleteByFst x = filter ((/= x) . fst3)
 
@@ -434,10 +467,13 @@ calcFp :: forall a . Typeable a => Fingerprint
 calcFp = typeRepFingerprint $ typeRep @a
 
 fromTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
-fromTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans) (GHC.fromList ks)
+fromTriples = fromSortedTriples . sortWith fst3 . nubByFst
+
+fromSortedTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
+fromSortedTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans) (GHC.fromList ks)
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
-    (fps, ans, ks) = unzip3 $ fromSortedList $ sortWith fst3 $ nubByFst kvs
+    (fps, ans, ks) = unzip3 $ fromSortedList kvs
 
 ----------------------------------------------------------------------------
 -- Tree-like conversion
@@ -464,11 +500,35 @@ fromSortedList l = runST $ do
                 writeArray result i (indexArray origin newFirst)
                 loop (2 * i + 2) (newFirst + 1)
 
+-- Returns a list of indexes which represents the "sorted" order of an array generated by
+-- fromSortedList of the provided length.
+-- I.e. fmap (fromSortedList [1, 2, 3, 4, 5, 6] !!) (generateOrderMapping 6) == [1, 2, 3, 4, 5, 6]
+--
+--     >>> generateOrderMapping 6
+--     [3,1,4,0,5,2]
+--
+--     >>> generateOrderMapping 8
+--     [7,3,1,4,0,5,2,6]
+generateOrderMapping :: Int -> [Int]
+generateOrderMapping len = runST $ do
+    orderMappingArr <- newPrimArray len
+    _ <- loop orderMappingArr 0 0
+    primArrayToList <$> unsafeFreezePrimArray orderMappingArr
+  where
+    loop :: MutablePrimArray s Int -> Int -> Int -> ST s Int
+    loop result i first =
+        if i >= len
+        then pure first
+        else do
+            newFirst <- loop result (2 * i + 1) first
+            writePrimArray result newFirst i
+            loop result (2 * i + 2) (newFirst + 1)
+
 ----------------------------------------------------------------------------
 --  Helper functions.
 ----------------------------------------------------------------------------
 
--- | Check that invariant of the structure is hold.
+-- | Check that invariant of the structure holds.
 -- The structure maintains the following invariant.
 -- For each element @A@ at index @i@:
 --
