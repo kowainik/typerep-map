@@ -180,13 +180,14 @@ one x = TypeRepMap (primArrayFromListN 1 [fa])
 {- |
 
 Insert a value into a 'TypeRepMap'.
+TypeRepMap optimizes for fast reads rather than inserts, as a trade-off inserts are @O(n)@.
 
 prop> size (insert v tm) >= size tm
 prop> member @a (insert (x :: f a) tm) == True
 
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
-insert x = union (one x)
+insert = union . one
 {-# INLINE insert #-}
 
 -- Extract the kind of a type. We use it to work around lack of syntax for
@@ -194,6 +195,9 @@ insert x = union (one x)
 type KindOf (a :: k) = k
 
 {- | Delete a value from a 'TypeRepMap'.
+
+TypeRepMap optimizes for fast reads rather than modifications, as a trade-off deletes are 
+@O(n)@, with an @O(log(n))@ optimization for when the element is already missing.
 
 prop> size (delete @a tm) <= size tm
 prop> member @a (delete @a tm) == False
@@ -208,8 +212,11 @@ True
 -}
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
 delete m
+  -- Lookups are fast, so check if we even have the element first.
   | not (member @a m) = m
+  -- We know we have the element, If the map has exactly one element, we can return the empty map
   | size m == 1 = empty
+  -- Otherwise, filter out the element in linear time.
   | otherwise = fromSortedTriples . filter ((/= typeFp @a) . fst3) . toSortedTriples $ m
 {-# INLINE delete #-}
 

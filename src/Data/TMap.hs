@@ -87,6 +87,7 @@ one x = coerce (F.one @a @Identity $ coerce x)
 {- |
 
 Insert a value into a 'TMap'.
+TMap optimizes for fast reads rather than inserts, as a trade-off inserts are @O(n)@.
 
 prop> size (insert v tm) >= size tm
 prop> member @a (insert (x :: a) tm) == True
@@ -97,6 +98,9 @@ insert x = coerce (F.insert @a @Identity $ coerce x)
 {-# INLINE insert #-}
 
 {- | Delete a value from a 'TMap'.
+
+TMap optimizes for fast reads rather than modifications, as a trade-off deletes are @O(n)@,
+with an @O(log(n))@ optimization for when the element is already missing.
 
 prop> size (delete @a tm) <= size tm
 prop> member @a (delete @a tm) == False
