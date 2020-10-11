@@ -20,7 +20,8 @@ import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it)
 import Test.Hspec.Hedgehog (hedgehog)
 
 import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), delete, insert, invariantCheck,
-                                 lookup, member, generateOrderMapping, fromSortedList, alter)
+                                 lookup, member, generateOrderMapping, fromSortedList, alter,
+                                 adjust)
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -34,8 +35,9 @@ typeRepMapPropertySpec = describe "TypeRepMap Property tests" $ do
         deleteMemberSpec
         insertInvariantSpec
         deleteInvariantSpec
-        alterReplaceSpec
+        alterInsertSpec
         alterDeleteSpec
+        alterAdjustSpec
         alterModifySpec
     describe "Internal helpers" $ do
         generateOrderMappingInvariantSpec
@@ -85,17 +87,25 @@ deleteInvariantSpec = it "invariantCheck (delete k b) == True" $ hedgehog $ do
     WrapTypeable (_ :: IntProxy n) <- forAll genTF
     assert $ invariantCheck (delete @n m)
 
-alterReplaceSpec :: Property
-alterReplaceSpec = it "lookup k (alter (const (Just v) m)) == Just v" $ hedgehog $ do
+alterInsertSpec :: Property
+alterInsertSpec = it "insert proxy m === alter (const (Just proxy)) m" $ hedgehog $ do
     m <- forAll genMap
     WrapTypeable (proxy :: IntProxy n) <- forAll genTF
-    lookup @n @IntProxy (alter (const (Just proxy)) m) === Just proxy
+    insert proxy m === alter (const (Just proxy)) m
 
 alterDeleteSpec :: Property
-alterDeleteSpec = it "lookup k (alter (const Nothing m)) == Nothing" $ hedgehog $ do
+alterDeleteSpec = it "delete proxy m === alter (const Nothing) m" $ hedgehog $ do
+    WrapTypeable (proxy :: IntProxy n) <- forAll genTF
+    m <- insert proxy <$> forAll genMap
+    delete @n @IntProxy m === alter @n @IntProxy (const Nothing) m
+
+alterAdjustSpec :: Property
+alterAdjustSpec = it "adjust f m == alter (fmap f) m" $ hedgehog $ do
     m <- forAll genMap
     WrapTypeable (_ :: IntProxy n) <- forAll genTF
-    lookup @n @IntProxy (alter (const (Nothing @(IntProxy n))) m) === Nothing
+    randInt <- forAll (Gen.int Range.constantBounded)
+    let f (IntProxy p n) = IntProxy p (n * 10)
+    adjust @n @IntProxy f m === alter @n @IntProxy (fmap f) m
 
 alterModifySpec :: Property
 alterModifySpec = it "lookup k (alter f) == f (lookup k m)" $ hedgehog $ do
