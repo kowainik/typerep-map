@@ -135,6 +135,8 @@ union = F.union
 {-# INLINE union #-}
 
 -- | The intersection of two 'TMap's using a combining function.
+--
+-- @O(n)@
 intersectionWith :: (forall x. Typeable x => x -> x -> x) -> TMap -> TMap -> TMap
 intersectionWith f = F.intersectionWith fId
   where
@@ -144,6 +146,8 @@ intersectionWith f = F.intersectionWith fId
 
 -- | The intersection of two 'TMap's.
 -- It keeps all values from the first map whose keys are present in the second.
+--
+-- @O(n)@
 intersection :: TMap -> TMap -> TMap
 intersection = F.intersection
 {-# INLINE intersection #-}
