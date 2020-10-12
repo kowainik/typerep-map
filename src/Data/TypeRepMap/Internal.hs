@@ -180,19 +180,14 @@ one x = TypeRepMap (primArrayFromListN 1 [fa])
 {- |
 
 Insert a value into a 'TypeRepMap'.
+TypeRepMap optimizes for fast reads rather than inserts, as a trade-off inserts are @O(n)@.
 
 prop> size (insert v tm) >= size tm
 prop> member @a (insert (x :: f a) tm) == True
 
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
-insert x = fromTriples . addX . toTriples
-  where
-    tripleX :: (Fingerprint, Any, Any)
-    tripleX@(fpX, _, _) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
-
-    addX :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
-    addX l = tripleX : deleteByFst fpX l
+insert = union . one
 {-# INLINE insert #-}
 
 -- Extract the kind of a type. We use it to work around lack of syntax for
@@ -200,6 +195,9 @@ insert x = fromTriples . addX . toTriples
 type KindOf (a :: k) = k
 
 {- | Delete a value from a 'TypeRepMap'.
+
+TypeRepMap optimizes for fast reads rather than modifications, as a trade-off deletes are 
+@O(n)@, with an @O(log(n))@ optimization for when the element is already missing.
 
 prop> size (delete @a tm) <= size tm
 prop> member @a (delete @a tm) == False
@@ -213,7 +211,13 @@ False
 True
 -}
 delete :: forall a (f :: KindOf a -> Type) . Typeable a => TypeRepMap f -> TypeRepMap f
-delete = fromTriples . deleteByFst (typeFp @a) . toTriples
+delete m
+  -- Lookups are fast, so check if we even have the element first.
+  | not (member @a m) = m
+  -- We know we have the element, If the map has exactly one element, we can return the empty map
+  | size m == 1 = empty
+  -- Otherwise, filter out the element in linear time.
+  | otherwise = fromSortedTriples . filter ((/= typeFp @a) . fst3) . toSortedTriples $ m
 {-# INLINE delete #-}
 
 {- |
@@ -406,9 +410,6 @@ toSortedTriples tm = trip <$> ordering
              , indexArray (trKeys tm) i)
     ordering :: [ Int ]
     ordering = generateOrderMapping (size tm)
-
-deleteByFst :: Eq a => a -> [(a, b, c)] -> [(a, b, c)]
-deleteByFst x = filter ((/= x) . fst3)
 
 nubByFst :: (Eq a) => [(a, b, c)] -> [(a, b, c)]
 nubByFst = nubBy ((==) `on` fst3)
