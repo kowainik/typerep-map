@@ -217,8 +217,12 @@ delete m
   -- We know we have the element, If the map has exactly one element, we can return the empty map
   | size m == 1 = empty
   -- Otherwise, filter out the element in linear time.
-  | otherwise = fromSortedTriples . filter ((/= typeFp @a) . fst3) . toSortedTriples $ m
+  | otherwise = fromSortedTriples . deleteFirst ((== typeFp @a) . fst3) . toSortedTriples $ m
 {-# INLINE delete #-}
+
+deleteFirst :: (a -> Bool) -> [a] -> [a]
+deleteFirst _ [] = []
+deleteFirst p (x : xs) = if p x then xs else x : deleteFirst p xs
 
 {- |
 Update a value at a specific key with the result of the provided function. When
