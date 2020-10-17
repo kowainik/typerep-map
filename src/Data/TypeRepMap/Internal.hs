@@ -187,7 +187,18 @@ prop> member @a (insert (x :: f a) tm) == True
 
 -}
 insert :: forall a f . Typeable a => f a -> TypeRepMap f -> TypeRepMap f
-insert = union . one
+insert x m
+  | size m == 0 = one x
+  | otherwise = case cachedBinarySearch (typeFp @a) (fingerprintAs m) (fingerprintBs m) of
+      Nothing -> union m $ one x
+      Just i -> m {trAnys = changeAnyArr i (trAnys m)}
+  where
+    changeAnyArr :: Int -> Array Any -> Array Any
+    changeAnyArr i trAs = runST $ do
+      let n = sizeofArray trAs
+      mutArr <- thawArray trAs 0 n
+      writeArray mutArr i $ toAny x
+      unsafeFreezeArray mutArr
 {-# INLINE insert #-}
 
 -- Extract the kind of a type. We use it to work around lack of syntax for
