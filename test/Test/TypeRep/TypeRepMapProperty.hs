@@ -16,8 +16,8 @@ import Data.Semigroup (Semigroup (..))
 import GHC.Exts (fromList)
 import GHC.TypeLits (Nat, SomeNat (..), someNatVal)
 import Hedgehog (MonadGen, assert, forAll, (===))
-import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it)
-import Test.Hspec.Hedgehog (hedgehog)
+import Test.Hspec (HasCallStack, Arg, Expectation, Spec, SpecWith, describe, it)
+import Test.Hspec.Hedgehog (MonadTest, hedgehog)
 
 import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), delete, insert, invariantCheck,
                                  lookup, member, generateOrderMapping, fromSortedList, alter,
@@ -103,7 +103,6 @@ alterAdjustSpec :: Property
 alterAdjustSpec = it "adjust f m == alter (fmap f) m" $ hedgehog $ do
     m <- forAll genMap
     WrapTypeable (_ :: IntProxy n) <- forAll genTF
-    randInt <- forAll (Gen.int Range.constantBounded)
     let f (IntProxy p n) = IntProxy p (n * 10)
     adjust @n @IntProxy f m !===! alter @n @IntProxy (fmap f) m
 
@@ -181,10 +180,14 @@ instance Eq (FpMap f) where
 
 -- Define an wrapper around equality checking for TRMs that works on both
 -- old and new GHCs.
-(!===!) :: (MonadTest m, HasCallStack) => TypeRepMap f -> TypeRepMap f -> m ()
+infix 4 !===!
+(!===!) :: (MonadTest m, HasCallStack, f a) => TypeRepMap f -> TypeRepMap f -> m ()
 a !===! b = FpMap a === FpMap b
 #else
-(!===!) :: (MonadTest m, HasCallStack) => TypeRepMap f -> TypeRepMap f -> m ()
+-- On newer GHCs we can check equality on the TRMs directly and don't need a special wrapping
+-- type.
+infix 4 !===!
+(!===!) :: (MonadTest m, Eq a, Show a, HasCallStack) => a -> a -> m ()
 (!===!) = (===)
 #endif
 
