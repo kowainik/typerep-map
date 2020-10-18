@@ -225,7 +225,7 @@ When the key is not a member of the map, the original map is returned.
 Just (Identity "aww")
 -}
 adjust :: forall a f . Typeable a => (f a -> f a) -> TypeRepMap f -> TypeRepMap f
-adjust fun tr = alter (fmap fun) tr
+adjust fun = alter (fmap fun)
 {-# INLINE adjust #-}
 
 {- |
