@@ -181,7 +181,7 @@ instance Eq (FpMap f) where
 -- Define an wrapper around equality checking for TRMs that works on both
 -- old and new GHCs.
 infix 4 !===!
-(!===!) :: (MonadTest m, HasCallStack, f a) => TypeRepMap f -> TypeRepMap f -> m ()
+(!===!) :: (MonadTest m, HasCallStack) => TypeRepMap f -> TypeRepMap f -> m ()
 a !===! b = FpMap a === FpMap b
 #else
 -- On newer GHCs we can check equality on the TRMs directly and don't need a special wrapping
