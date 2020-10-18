@@ -91,13 +91,13 @@ alterInsertSpec :: Property
 alterInsertSpec = it "insert proxy m === alter (const (Just proxy)) m" $ hedgehog $ do
     m <- forAll genMap
     WrapTypeable (proxy :: IntProxy n) <- forAll genTF
-    insert proxy m === alter (const (Just proxy)) m
+    insert proxy m !===! alter (const (Just proxy)) m
 
 alterDeleteSpec :: Property
 alterDeleteSpec = it "delete proxy m === alter (const Nothing) m" $ hedgehog $ do
     WrapTypeable (proxy :: IntProxy n) <- forAll genTF
     m <- insert proxy <$> forAll genMap
-    delete @n @IntProxy m === alter @n @IntProxy (const Nothing) m
+    delete @n @IntProxy m !===! alter @n @IntProxy (const Nothing) m
 
 alterAdjustSpec :: Property
 alterAdjustSpec = it "adjust f m == alter (fmap f) m" $ hedgehog $ do
@@ -105,7 +105,7 @@ alterAdjustSpec = it "adjust f m == alter (fmap f) m" $ hedgehog $ do
     WrapTypeable (_ :: IntProxy n) <- forAll genTF
     randInt <- forAll (Gen.int Range.constantBounded)
     let f (IntProxy p n) = IntProxy p (n * 10)
-    adjust @n @IntProxy f m === alter @n @IntProxy (fmap f) m
+    adjust @n @IntProxy f m !===! alter @n @IntProxy (fmap f) m
 
 alterModifySpec :: Property
 alterModifySpec = it "lookup k (alter f) == f (lookup k m)" $ hedgehog $ do
@@ -123,7 +123,7 @@ alterModifySpec = it "lookup k (alter f) == f (lookup k m)" $ hedgehog $ do
 -- Internal helpers
 ----------------------------------------------------------------------------
 generateOrderMappingInvariantSpec :: Property
-generateOrderMappingInvariantSpec = 
+generateOrderMappingInvariantSpec =
     it "fmap (fromSortedList [1 .. n] !!) (generateOrderMapping n) == [1 .. n]" $ hedgehog $ do
         n <- forAll $ Gen.int (Range.linear 0 100)
         fmap (fromSortedList [1 .. n] !!) (generateOrderMapping n) === [1 .. n]
@@ -132,43 +132,18 @@ generateOrderMappingInvariantSpec =
 -- Semigroup and Monoid laws
 ----------------------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ < 806
-{- | This newtype is used to compare 'TypeRepMap's using only 'Fingerprint's.
-It's not a good idea to write such 'Eq' instance for 'TypeRepMap' itself because
-it doesn't compare values so it's not true equality. But this should be enough
-for tests.
--}
-newtype FpMap f = FpMap (TypeRepMap f)
-    deriving newtype (Show, Semigroup, Monoid)
-
-instance Eq (FpMap f) where
-    FpMap (TypeRepMap as1 bs1 _ _) == FpMap (TypeRepMap as2 bs2 _ _) =
-        as1 == as2 && bs1 == bs2
-#endif
-
 semigroupAssocSpec :: Property
 semigroupAssocSpec = it "x <> (y <> z) == (x <> y) <> z" $ hedgehog $ do
-#if __GLASGOW_HASKELL__ >= 806
     x <- forAll genMap
     y <- forAll genMap
     z <- forAll genMap
-#else
-    x <- FpMap <$> forAll genMap
-    y <- FpMap <$> forAll genMap
-    z <- FpMap <$> forAll genMap
-#endif
-    (x <> (y <> z)) === ((x <> y) <> z)
+    (x <> (y <> z)) !===! ((x <> y) <> z)
 
 monoidIdentitySpec :: Property
 monoidIdentitySpec = it "x <> mempty == mempty <> x == x" $ hedgehog $ do
-#if __GLASGOW_HASKELL__ >= 806
     x <- forAll genMap
-#else
-    x <- FpMap <$> forAll genMap
-#endif
-
-    x <> mempty === x
-    mempty <> x === x
+    x <> mempty !===! x
+    mempty <> x !===! x
 
 ----------------------------------------------------------------------------
 -- Generators
@@ -187,3 +162,29 @@ genTF = do
     case someNatVal randNat of
         Just (SomeNat proxyNat) -> pure $ WrapTypeable $ IntProxy proxyNat randInt
         Nothing                 -> error "Invalid test generator"
+
+----------------------------------------------------------------------------
+-- Helpers
+----------------------------------------------------------------------------
+#if __GLASGOW_HASKELL__ < 806
+{- | This newtype is used to compare 'TypeRepMap's using only 'Fingerprint's.
+It's not a good idea to write such 'Eq' instance for 'TypeRepMap' itself because
+it doesn't compare values so it's not true equality. But this should be enough
+for tests.
+-}
+newtype FpMap f = FpMap (TypeRepMap f)
+    deriving newtype (Show, Semigroup, Monoid)
+
+instance Eq (FpMap f) where
+    FpMap (TypeRepMap as1 bs1 _ _) == FpMap (TypeRepMap as2 bs2 _ _) =
+        as1 == as2 && bs1 == bs2
+
+-- Define an wrapper around equality checking for TRMs that works on both
+-- old and new GHCs.
+(!===!) :: (MonadTest m, HasCallStack) => TypeRepMap f -> TypeRepMap f -> m ()
+a !===! b = FpMap a === FpMap b
+#else
+(!===!) :: (MonadTest m, HasCallStack) => TypeRepMap f -> TypeRepMap f -> m ()
+(!===!) = (===)
+#endif
+
