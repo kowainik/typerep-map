@@ -350,6 +350,40 @@ union :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 union = unionWith const
 {-# INLINE union #-}
 
+-- | The intersection of two 'TypeRepMap's using a combining function
+intersectionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+intersectionWith f ma mb =
+    fromSortedTriples $ mergeMaps (toSortedTriples ma) (toSortedTriples mb)
+  where
+    f' :: forall x. TypeRep x -> f x -> f x -> f x
+    f' tr = withTypeable tr f
+
+    combine :: (Fingerprint, Any, Any) -> (Fingerprint, Any, Any) -> (Fingerprint, Any, Any)
+    combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
+
+    -- Merges two typrepmaps into a sorted, dedup'd list of triples.
+    mergeMaps :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
+    mergeMaps _ [] = []
+    mergeMaps [] _ = []
+    -- Merge
+    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs)
+      -- Fingerprints are equal, union the elements using our function
+      -- If the incoming maps were de-duped, there shouldn't be any other equivalent
+      -- fingerprints
+      | af == bf = combine a b : mergeMaps as bs
+      -- First fingerprint must not be in the second map or we would have seen it by now
+      -- Skip it an move on
+      | af < bf = mergeMaps as (b : bs)
+      | otherwise = mergeMaps (a:as) bs
+{-# INLINE intersectionWith #-}
+
+-- | The intersection of two 'TypeRepMap's. 
+-- It keeps all values from the first map whose keys are present in the second.
+intersection :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+intersection = intersectionWith const
+{-# INLINE intersection #-}
+
+
 {- | Check if a value of the given type is present in a 'TypeRepMap'.
 
 >>> member @Char $ one (Identity 'a')

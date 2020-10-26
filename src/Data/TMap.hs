@@ -37,6 +37,8 @@ module Data.TMap
        , delete
        , unionWith
        , union
+       , intersectionWith
+       , intersection
        , map
        , adjust
        , alter
@@ -131,6 +133,20 @@ unionWith f = F.unionWith fId
 union :: TMap -> TMap -> TMap
 union = F.union
 {-# INLINE union #-}
+
+-- | The intersection of two 'TMap's using a combining function.
+intersectionWith :: (forall x. Typeable x => x -> x -> x) -> TMap -> TMap -> TMap
+intersectionWith f = F.intersectionWith fId
+  where
+    fId :: forall y . Typeable y => Identity y -> Identity y -> Identity y
+    fId y1 y2 = f (coerce y1) (coerce y2)
+{-# INLINE intersectionWith #-}
+
+-- | The intersection of two 'TMap's.
+-- It keeps all values from the first map whose keys are present in the second.
+intersection :: TMap -> TMap -> TMap
+intersection = F.intersection
+{-# INLINE intersection #-}
 
 {- | Lookup a value of the given type in a 'TMap'.
 
