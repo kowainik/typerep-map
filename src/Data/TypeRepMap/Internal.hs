@@ -352,7 +352,7 @@ union = unionWith const
 
 -- | The 'intersection' of two 'TypeRepMap's using a combining function
 --
--- @O(n)@
+-- @O(n + m)@
 intersectionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 intersectionWith f ma mb =
     fromSortedTriples $ mergeMaps (toSortedTriples ma) (toSortedTriples mb)
@@ -386,7 +386,7 @@ intersectionWith f ma mb =
 -- | The intersection of two 'TypeRepMap's. 
 -- It keeps all values from the first map whose keys are present in the second.
 --
--- @O(n)@
+-- @O(n + m)@
 intersection :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 intersection = intersectionWith const
 {-# INLINE intersection #-}
