@@ -63,6 +63,8 @@ module Data.TypeRepMap
        , hoistWithKey
        , unionWith
        , union
+       , intersectionWith
+       , intersection
 
          -- * Query
        , lookup

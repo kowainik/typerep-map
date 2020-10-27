@@ -350,6 +350,48 @@ union :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 union = unionWith const
 {-# INLINE union #-}
 
+-- | The 'intersection' of two 'TypeRepMap's using a combining function
+--
+-- @O(n + m)@
+intersectionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+intersectionWith f ma mb =
+    fromSortedTriples $ mergeMaps (toSortedTriples ma) (toSortedTriples mb)
+  where
+    f' :: forall x. TypeRep x -> f x -> f x -> f x
+    f' tr = withTypeable tr f
+
+    combine :: (Fingerprint, Any, Any) -> (Fingerprint, Any, Any) -> (Fingerprint, Any, Any)
+    combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
+
+    -- Merges two typrepmaps into a sorted, dedup'd list of triples.
+    mergeMaps :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
+    -- If either list is empty, the intersection must be finished.
+    mergeMaps _ [] = []
+    mergeMaps [] _ = []
+    -- Merge the two maps considering one element at a time.
+    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs) = 
+        case compare af bf of
+            -- Fingerprints are equal, union the elements using our function
+            -- If the incoming maps were de-duped, there shouldn't be any other equivalent
+            -- fingerprints
+            EQ -> combine a b : mergeMaps as bs
+            -- First fingerprint must not be in the second map or we would have seen it by now
+            -- Skip it an move on
+            LT -> mergeMaps as (b : bs)
+            -- Second fingerprint must not be in the first map or we would have seen it by now
+            -- Skip it an move on
+            GT -> mergeMaps (a:as) bs
+{-# INLINE intersectionWith #-}
+
+-- | The intersection of two 'TypeRepMap's. 
+-- It keeps all values from the first map whose keys are present in the second.
+--
+-- @O(n + m)@
+intersection :: TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+intersection = intersectionWith const
+{-# INLINE intersection #-}
+
+
 {- | Check if a value of the given type is present in a 'TypeRepMap'.
 
 >>> member @Char $ one (Identity 'a')

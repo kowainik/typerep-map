@@ -20,8 +20,8 @@ import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it)
 import Test.Hspec.Hedgehog (hedgehog)
 
 import Data.TypeRepMap.Internal (TypeRepMap (..), WrapTypeable (..), delete, insert, invariantCheck,
-                                 lookup, member, generateOrderMapping, fromSortedList, alter,
-                                 adjust)
+                                 lookup, member, union, generateOrderMapping, fromSortedList,
+                                 adjust, alter, intersection)
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -39,6 +39,7 @@ typeRepMapPropertySpec = describe "TypeRepMap Property tests" $ do
         alterDeleteSpec
         alterAdjustSpec
         alterModifySpec
+        intersectionSpec
     describe "Internal helpers" $ do
         generateOrderMappingInvariantSpec
     describe "Instance Laws" $ do
@@ -117,6 +118,12 @@ alterModifySpec = it "lookup k (alter f) == f (lookup k m)" $ hedgehog $ do
           | even n = Nothing
           | otherwise = Just $ IntProxy p (n * 10)
     lookup @n @IntProxy (alter @n f m) === f (lookup @n @IntProxy m)
+
+intersectionSpec :: Property
+intersectionSpec = it "m `intersection` (m `union` n) == m" $ hedgehog $ do
+    m <- forAll genMap
+    n <- forAll genMap
+    m `intersection` (m `union` n) === m
 
 ----------------------------------------------------------------------------
 -- Internal helpers
