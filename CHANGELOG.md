@@ -53,4 +53,4 @@ The changelog is available [on GitHub][2].
 * Initially created.
 
 [1]: https://pvp.haskell.org
-[2]: https://github.com/kowainik/typerep-map/blob/master/CHANGELOG.md
+[2]: https://github.com/kowainik/typerep-map/releases
