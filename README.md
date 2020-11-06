@@ -4,7 +4,7 @@
 
 [![GitHub CI](https://github.com/kowainik/typerep-map/workflows/CI/badge.svg)](https://github.com/kowainik/typerep-map/actions)
 [![Build status](https://img.shields.io/travis/kowainik/typerep-map.svg?logo=travis)](https://travis-ci.org/kowainik/typerep-map)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/kowainik/typerep-map?branch=master&svg=true)](https://ci.appveyor.com/project/kowainik/typerep-map)
+[![Windows build status](https://ci.appveyor.com/api/projects/status/github/kowainik/typerep-map?branch=main&svg=true)](https://ci.appveyor.com/project/kowainik/typerep-map)
 [![Hackage](https://img.shields.io/hackage/v/typerep-map.svg?logo=haskell)](https://hackage.haskell.org/package/typerep-map)
 [![Stackage LTS](http://stackage.org/package/typerep-map/badge/lts)](http://stackage.org/lts/package/typerep-map)
 [![Stackage Nightly](http://stackage.org/package/typerep-map/badge/nightly)](http://stackage.org/nightly/package/typerep-map)
