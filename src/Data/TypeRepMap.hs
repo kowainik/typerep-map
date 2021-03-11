@@ -71,6 +71,8 @@ module Data.TypeRepMap
        , member
        , size
        , keys
+       , keysWith
+       , toListWith
 
          -- * 'IsList'
        , WrapTypeable (..)
