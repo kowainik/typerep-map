@@ -48,6 +48,8 @@ module Data.TMap
        , member
        , size
        , keys
+       , keysWith
+       , toListWith
        ) where
 
 import Prelude hiding (lookup, map)
@@ -55,7 +57,7 @@ import Prelude hiding (lookup, map)
 import Data.Functor.Identity (Identity (..))
 import Data.Typeable (Typeable)
 import GHC.Exts (coerce)
-import Type.Reflection (SomeTypeRep)
+import Type.Reflection (SomeTypeRep, TypeRep)
 
 import qualified Data.TypeRepMap as F
 
@@ -184,6 +186,16 @@ size = F.size
 keys :: TMap -> [SomeTypeRep]
 keys = F.keys
 {-# INLINE keys #-}
+
+-- | Return the list of keys by wrapping them with a user-provided function.
+keysWith :: (forall a. TypeRep a -> r) -> TMap -> [r]
+keysWith = F.keysWith
+{-# INLINE keysWith #-}
+
+-- | Return the list of key-value pairs by wrapping them with a user-provided function.
+toListWith :: (forall a. Typeable a => a -> r) -> TMap -> [r]
+toListWith = F.toListWith
+{-# INLINE toListWith #-}
 
 -- | Map a function over the values.
 map :: (forall a. Typeable a => a -> a) -> TMap -> TMap

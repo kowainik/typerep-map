@@ -205,6 +205,8 @@ insert x m
 -- inferred type variables (which are not subject to type applications).
 type KindOf (a :: k) = k
 
+type ArgKindOf (f :: k -> l) = k
+
 {- | Delete a value from a 'TypeRepMap'.
 
 TypeRepMap optimizes for fast reads rather than modifications, as a trade-off deletes are 
@@ -427,8 +429,21 @@ size = sizeofPrimArray . fingerprintAs
 
 -- | Return the list of 'SomeTypeRep' from the keys.
 keys :: TypeRepMap f -> [SomeTypeRep]
-keys TypeRepMap{..} = SomeTypeRep . anyToTypeRep <$> toList trKeys
+keys = keysWith SomeTypeRep
 {-# INLINE keys #-}
+
+-- | Return the list of keys by wrapping them with a user-provided function.
+keysWith :: (forall (a :: ArgKindOf f). TypeRep a -> r) -> TypeRepMap f -> [r]
+keysWith f TypeRepMap{..} = f . anyToTypeRep <$> toList trKeys
+{-# INLINE keysWith #-}
+
+-- | Return the list of key-value pairs by wrapping them with a user-provided function.
+toListWith :: forall f r. (forall (a :: ArgKindOf f). Typeable a => f a -> r) -> TypeRepMap f -> [r]
+toListWith f = map toF . toTriples
+  where
+    withTypeRep :: TypeRep a -> f a -> r
+    withTypeRep tr an = withTypeable tr $ f an
+    toF (_, an, k) = withTypeRep (unsafeCoerce k) (fromAny an)
 
 -- | Binary searched based on this article
 -- http://bannalia.blogspot.com/2015/06/cache-friendly-binary-search.html
@@ -506,9 +521,6 @@ data WrapTypeable f where
 instance Show (WrapTypeable f) where
     show (WrapTypeable (_ :: f a)) = show $ calcFp @a
 
-wrapTypeable :: TypeRep a -> f a -> WrapTypeable f
-wrapTypeable tr = withTypeable tr WrapTypeable
-
 {- |
 
 prop> fromList . toList == 'id'
@@ -536,10 +548,7 @@ instance IsList (TypeRepMap f) where
         k (WrapTypeable (_ :: f a)) = unsafeCoerce $ typeRep @a
 
     toList :: TypeRepMap f -> [WrapTypeable f]
-    toList = map toWrapTypeable . toTriples
-      where
-        toWrapTypeable :: (Fingerprint, Any, Any) -> WrapTypeable f
-        toWrapTypeable (_, an, k) = wrapTypeable (unsafeCoerce k) (fromAny an)
+    toList = toListWith WrapTypeable
 
 calcFp :: forall a . Typeable a => Fingerprint
 calcFp = typeRepFingerprint $ typeRep @a
