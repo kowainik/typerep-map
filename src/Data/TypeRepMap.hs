@@ -5,7 +5,7 @@ Copyright:  (c) 2017-2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 
- A version of 'Data.TMap.TMap' parametrized by an interpretation @f@. This
+A version of 'Data.TMap.TMap' parametrized by an interpretation @f@. This
 sort of parametrization may be familiar to users of @vinyl@ records.
 
 @'TypeRepMap' f@ is a more efficient replacement for @DMap
