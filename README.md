@@ -3,11 +3,7 @@
 ![logo](https://user-images.githubusercontent.com/8126674/44323413-788dd700-a484-11e8-842e-f224cfaa4206.png)
 
 [![GitHub CI](https://github.com/kowainik/typerep-map/workflows/CI/badge.svg)](https://github.com/kowainik/typerep-map/actions)
-[![Build status](https://img.shields.io/travis/kowainik/typerep-map.svg?logo=travis)](https://travis-ci.org/kowainik/typerep-map)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/kowainik/typerep-map?branch=main&svg=true)](https://ci.appveyor.com/project/kowainik/typerep-map)
 [![Hackage](https://img.shields.io/hackage/v/typerep-map.svg?logo=haskell)](https://hackage.haskell.org/package/typerep-map)
-[![Stackage LTS](http://stackage.org/package/typerep-map/badge/lts)](http://stackage.org/lts/package/typerep-map)
-[![Stackage Nightly](http://stackage.org/package/typerep-map/badge/nightly)](http://stackage.org/nightly/package/typerep-map)
 [![MPL-2.0 license](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 
 
