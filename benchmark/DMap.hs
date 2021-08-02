@@ -18,7 +18,7 @@ import Criterion.Main (bench, env, nf, whnf)
 import Data.Kind (Type)
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
-import GHC.TypeLits (type (+), KnownNat, Nat)
+import GHC.TypeLits (KnownNat, Nat, type (+))
 import Type.Reflection (TypeRep, Typeable, typeRep)
 import Type.Reflection.Unsafe (typeRepFingerprint)
 
@@ -36,10 +36,10 @@ spec = BenchSpec
         env mkBigMap $ \ ~(DMapNF bigMap) ->
             bench name $ nf tenLookups bigMap
     , benchInsertSmall = Just $ \name ->
-        bench name $ whnf (inserts empty 10) (Proxy @ 99999)
+        bench name $ whnf (inserts empty 10) (Proxy @99999)
     , benchInsertBig = Just $ \name ->
         env mkBigMap $ \ ~(DMapNF bigMap) ->
-            bench name $ whnf (inserts bigMap 1) (Proxy @ 99999)
+            bench name $ whnf (inserts bigMap 1) (Proxy @99999)
     , benchUpdateSmall = Nothing -- Not implemented
     , benchUpdateBig = Nothing -- Not implemented
     }
@@ -62,9 +62,9 @@ inserts
     -> TypeRepMap (Proxy :: Nat -> Type)
 inserts !c 0 _ = c
 inserts !c n x = inserts
-    (insert (typeRep @ a) x c)
-    (n-1)
-    (Proxy :: Proxy (a+1))
+    (insert (typeRep @a) x c)
+    (n - 1)
+    (Proxy :: Proxy (a + 1))
 
 -- TypeRepMap of 10000 elements
 mkBigMap :: IO (DMapNF (Proxy :: Nat -> Type))

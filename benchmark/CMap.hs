@@ -17,7 +17,7 @@ import Data.Kind (Type)
 import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (Typeable)
-import GHC.TypeLits (type (+), KnownNat, Nat)
+import GHC.TypeLits (KnownNat, Nat, type (+))
 
 import Data.TypeRep.CMap (TypeRepMap (..), empty, insert, lookup)
 
@@ -30,16 +30,16 @@ spec = BenchSpec
         env (mkMap 10000) $ \ ~bigMap ->
             bench name $ nf tenLookups bigMap
     , benchInsertSmall = Just $ \name ->
-          bench name $ whnf (inserts empty 10) (Proxy @ 99999)
+          bench name $ whnf (inserts empty 10) (Proxy @99999)
     , benchInsertBig = Just $ \name ->
         env (mkMap 10000) $ \ ~bigMap ->
-            bench name $ whnf (inserts bigMap 1) (Proxy @ 99999)
+            bench name $ whnf (inserts bigMap 1) (Proxy @99999)
     , benchUpdateSmall = Just $ \name ->
         env (mkMap 10) $ \ ~smallMap ->
-            bench name $ whnf (inserts smallMap 10) (Proxy @ 0)
+            bench name $ whnf (inserts smallMap 10) (Proxy @0)
     , benchUpdateBig = Just $ \name ->
         env (mkMap 10000) $ \ ~bigMap ->
-            bench name $ whnf (inserts bigMap 10) (Proxy @ 0)
+            bench name $ whnf (inserts bigMap 10) (Proxy @0)
     }
 
 tenLookups
@@ -49,7 +49,7 @@ tenLookups
        )
 tenLookups tmap = (lp, lp, lp, lp, lp, lp, lp, lp)
   where
-    lp :: forall (a::Nat). Typeable a => Proxy a
+    lp :: forall (a :: Nat) . Typeable a => Proxy a
     lp = fromJust $ lookup tmap
 
 inserts
@@ -61,8 +61,8 @@ inserts
 inserts !c 0 _ = c
 inserts !c n x = inserts
     (insert x c)
-    (n-1)
-    (Proxy :: Proxy (a+1))
+    (n - 1)
+    (Proxy :: Proxy (a + 1))
 
 mkMap :: Int -> IO (TypeRepMap (Proxy :: Nat -> Type))
 mkMap n = pure $ buildBigMap n (Proxy :: Proxy 0) empty

@@ -123,7 +123,7 @@ delete = F.delete @a @Identity
 {-# INLINE delete #-}
 
 -- | The union of two 'TMap's using a combining function.
-unionWith :: (forall x. Typeable x => x -> x -> x) -> TMap -> TMap -> TMap
+unionWith :: (forall x . Typeable x => x -> x -> x) -> TMap -> TMap -> TMap
 unionWith f = F.unionWith fId
   where
     fId :: forall y . Typeable y => Identity y -> Identity y -> Identity y
@@ -139,7 +139,7 @@ union = F.union
 -- | The intersection of two 'TMap's using a combining function.
 --
 -- @O(n + m)@
-intersectionWith :: (forall x. Typeable x => x -> x -> x) -> TMap -> TMap -> TMap
+intersectionWith :: (forall x . Typeable x => x -> x -> x) -> TMap -> TMap -> TMap
 intersectionWith f = F.intersectionWith fId
   where
     fId :: forall y . Typeable y => Identity y -> Identity y -> Identity y
@@ -162,7 +162,7 @@ Just 11
 >>> x :: Maybe ()
 Nothing
 -}
-lookup :: forall a. Typeable a => TMap -> Maybe a
+lookup :: forall a . Typeable a => TMap -> Maybe a
 lookup = coerce (F.lookup @a @Identity)
 {-# INLINE lookup #-}
 
@@ -188,17 +188,17 @@ keys = F.keys
 {-# INLINE keys #-}
 
 -- | Return the list of keys by wrapping them with a user-provided function.
-keysWith :: (forall a. TypeRep a -> r) -> TMap -> [r]
+keysWith :: (forall a . TypeRep a -> r) -> TMap -> [r]
 keysWith = F.keysWith
 {-# INLINE keysWith #-}
 
 -- | Return the list of key-value pairs by wrapping them with a user-provided function.
-toListWith :: (forall a. Typeable a => a -> r) -> TMap -> [r]
-toListWith = F.toListWith
+toListWith :: (forall a . Typeable a => a -> r) -> TMap -> [r]
+toListWith f = F.toListWith (f . runIdentity)
 {-# INLINE toListWith #-}
 
 -- | Map a function over the values.
-map :: (forall a. Typeable a => a -> a) -> TMap -> TMap
+map :: (forall a . Typeable a => a -> a) -> TMap -> TMap
 map f = F.hoistWithKey (liftToIdentity f)
 {-# INLINE map #-}
 
@@ -212,9 +212,9 @@ adjust f = F.adjust (liftToIdentity f)
 alter :: Typeable a => (Maybe a -> Maybe a) -> TMap -> TMap
 alter f = F.alter (liftF f)
   where
-    liftF :: forall a. (Maybe a -> Maybe a) -> Maybe (Identity a) -> Maybe (Identity a)
+    liftF :: forall a . (Maybe a -> Maybe a) -> Maybe (Identity a) -> Maybe (Identity a)
     liftF = coerce
 {-# INLINE alter #-}
 
-liftToIdentity :: forall a. (a -> a) -> Identity a -> Identity a
+liftToIdentity :: forall a . (a -> a) -> Identity a -> Identity a
 liftToIdentity = coerce

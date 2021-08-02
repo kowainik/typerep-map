@@ -3,6 +3,10 @@
 `typerep-map` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.3.3.1 — Aug 2, 2021
+
+* Support GHC-9.0.
+
 ## 0.3.3.0 — Apr 18, 2020
 
 * [#83](https://github.com/kowainik/typerep-map/issues/83):

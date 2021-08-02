@@ -42,13 +42,15 @@ import Control.Monad.ST (ST, runST)
 import Control.Monad.Zip (mzip)
 import Data.Function (on)
 import Data.Kind (Type)
-import Data.Type.Equality ((:~:) (..), TestEquality (..))
 import Data.List (intercalate, nubBy)
 import Data.Maybe (fromMaybe)
-import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', sizeofArray,
-                             thawArray, unsafeFreezeArray, writeArray)
-import Data.Primitive.PrimArray (writePrimArray, newPrimArray, unsafeFreezePrimArray, primArrayToList, MutablePrimArray, primArrayFromListN, PrimArray, indexPrimArray, sizeofPrimArray)
-import Data.Semigroup (Semigroup (..), All(..))
+import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', sizeofArray, thawArray,
+                             unsafeFreezeArray, writeArray)
+import Data.Primitive.PrimArray (MutablePrimArray, PrimArray, indexPrimArray, newPrimArray,
+                                 primArrayFromListN, primArrayToList, sizeofPrimArray,
+                                 unsafeFreezePrimArray, writePrimArray)
+import Data.Semigroup (All (..), Semigroup (..))
+import Data.Type.Equality (TestEquality (..), (:~:) (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
@@ -126,7 +128,7 @@ instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
         go i
             | i == size tm1 = True
             | otherwise = case testEquality tr1i tr2i of
-                  Nothing -> False
+                  Nothing   -> False
                   Just Refl -> repEq tr1i (fromAny tv1i) (fromAny tv2i) && go (i + 1)
           where
             tr1i :: TypeRep x
@@ -191,7 +193,7 @@ insert x m
   | size m == 0 = one x
   | otherwise = case cachedBinarySearch (typeFp @a) (fingerprintAs m) (fingerprintBs m) of
       Nothing -> union m $ one x
-      Just i -> m {trAnys = changeAnyArr i (trAnys m)}
+      Just i  -> m {trAnys = changeAnyArr i (trAnys m)}
   where
     changeAnyArr :: Int -> Array Any -> Array Any
     changeAnyArr i trAs = runST $ do
@@ -209,7 +211,7 @@ type ArgKindOf (f :: k -> l) = k
 
 {- | Delete a value from a 'TypeRepMap'.
 
-TypeRepMap optimizes for fast reads rather than modifications, as a trade-off deletes are 
+TypeRepMap optimizes for fast reads rather than modifications, as a trade-off deletes are
 @O(n)@, with an @O(log(n))@ optimization for when the element is already missing.
 
 prop> size (delete @a tm) <= size tm
@@ -234,11 +236,11 @@ delete m
 {-# INLINE delete #-}
 
 deleteFirst :: (a -> Bool) -> [a] -> [a]
-deleteFirst _ [] = []
+deleteFirst _ []       = []
 deleteFirst p (x : xs) = if p x then xs else x : deleteFirst p xs
 
 {- |
-Update a value at a specific key with the result of the provided function. 
+Update a value at a specific key with the result of the provided function.
 When the key is not a member of the map, the original map is returned.
 
 >>> trmap = fromList @(TypeRepMap Identity) [WrapTypeable $ Identity "a"]
@@ -265,11 +267,11 @@ alter fun tr = case cachedBinarySearch (typeFp @a) (fingerprintAs tr) (fingerpri
     Nothing ->
         case (fun Nothing) of
             Nothing -> tr
-            Just v -> insert v tr
+            Just v  -> insert v tr
     Just i  ->
         case fun (Just . fromAny $ indexArray (trAnys tr) i) of
             Nothing -> delete @a tr
-            Just v -> tr{trAnys = replaceAnyAt i (toAny v) (trAnys tr)}
+            Just v  -> tr{trAnys = replaceAnyAt i (toAny v) (trAnys tr)}
   where
     replaceAnyAt :: Int -> Any -> Array Any -> Array Any
     replaceAnyAt i v trAs = runST $ do
@@ -371,7 +373,7 @@ intersectionWith f ma mb =
     mergeMaps _ [] = []
     mergeMaps [] _ = []
     -- Merge the two maps considering one element at a time.
-    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs) = 
+    mergeMaps (a@(af, _, _) : as) (b@(bf, _, _) : bs) =
         case compare af bf of
             -- Fingerprints are equal, union the elements using our function
             -- If the incoming maps were de-duped, there shouldn't be any other equivalent
@@ -385,7 +387,7 @@ intersectionWith f ma mb =
             GT -> mergeMaps (a:as) bs
 {-# INLINE intersectionWith #-}
 
--- | The intersection of two 'TypeRepMap's. 
+-- | The intersection of two 'TypeRepMap's.
 -- It keeps all values from the first map whose keys are present in the second.
 --
 -- @O(n + m)@
@@ -438,7 +440,7 @@ keysWith f TypeRepMap{..} = f . anyToTypeRep <$> toList trKeys
 {-# INLINE keysWith #-}
 
 -- | Return the list of key-value pairs by wrapping them with a user-provided function.
-toListWith :: forall f r. (forall (a :: ArgKindOf f). Typeable a => f a -> r) -> TypeRepMap f -> [r]
+toListWith :: forall f r . (forall (a :: ArgKindOf f) . Typeable a => f a -> r) -> TypeRepMap f -> [r]
 toListWith f = map toF . toTriples
   where
     withTypeRep :: TypeRep a -> f a -> r
@@ -491,7 +493,7 @@ toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ trAnys tm) (GHC.toList $ t
 -- | Efficiently get sorted triples from a map in O(n) time
 --
 -- We assume the incoming TypeRepMap is already sorted into 'cachedBinarySearch' order using fromSortedList.
--- Then we can construct the index mapping from the "cached" ordering into monotonically 
+-- Then we can construct the index mapping from the "cached" ordering into monotonically
 -- increasing order using 'generateOrderMapping' with the length of the TRM. This takes @O(n).
 -- We then pull those indexes from the source TRM to get the sorted triples in a total of @O(n).
 toSortedTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
@@ -628,8 +630,8 @@ generateOrderMapping len = runST $ do
 invariantCheck :: TypeRepMap f -> Bool
 invariantCheck TypeRepMap{..} = getAll (check 0)
   where
-    lastMay [] = Nothing
-    lastMay [x] = Just x
+    lastMay []     = Nothing
+    lastMay [x]    = Just x
     lastMay (_:xs) = lastMay xs
     sz = sizeofPrimArray fingerprintAs
     check i | i >= sz = All True
