@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                typerep-map
-version:             0.3.3.0
+version:             0.4.0.0
 synopsis:            Efficient implementation of a dependent map with types as keys
 description:
     A dependent map from type representations to values of these types.
@@ -23,7 +23,7 @@ license:             MPL-2.0
 license-file:        LICENSE
 author:              Veronika Romashkina, Vladislav Zavialov, Dmitrii Kovanikov
 maintainer:          Kowainik <xrom.xkov@gmail.com>
-copyright:           2017-2020 Kowainik
+copyright:           2017-2021 Kowainik
 category:            Data, Data Structures, Types
 build-type:          Simple
 extra-doc-files:     README.md
@@ -31,7 +31,7 @@ extra-doc-files:     README.md
 tested-with:         GHC == 8.2.2
                    , GHC == 8.4.4
                    , GHC == 8.6.5
-                   , GHC == 8.8.3
+                   , GHC == 8.8.4
                    , GHC == 8.10.5
                    , GHC == 9.0.1
 
@@ -54,10 +54,8 @@ common common-options
                        -Widentities
                        -Wincomplete-uni-patterns
                        -Wincomplete-record-updates
-  if impl(ghc >= 8.0)
-    ghc-options:       -Wredundant-constraints
-  if impl(ghc >= 8.2)
-    ghc-options:       -fhide-source-paths
+                       -Wredundant-constraints
+                       -fhide-source-paths
   if impl(ghc >= 8.4)
     ghc-options:       -Wmissing-export-lists
                        -Wpartial-fields

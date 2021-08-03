@@ -2,9 +2,12 @@
 {-# LANGUAGE Rank2Types          #-}
 
 {- |
-Copyright:  (c) 2017-2020 Kowainik
-SPDX-License-Identifier: MPL-2.0
-Maintainer: Kowainik <xrom.xkov@gmail.com>
+Module                  : Data.TMap
+Copyright               : (c) 2017-2021 Kowainik
+SPDX-License-Identifier : MPL-2.0
+Maintainer              : Kowainik <xrom.xkov@gmail.com>
+Stability               : Stable
+Portability             : Portable
 
 'TMap' is a heterogeneous data structure similar in its essence to
 'Data.Map.Map' with types as keys, where each value has the type of its key.
@@ -21,7 +24,6 @@ Here is an example of a 'TMap' with a comparison to 'Data.Map.Map':
 
 The runtime representation of 'TMap' is an array, not a tree. This makes
 'lookup' significantly more efficient.
-
 -}
 
 module Data.TMap
