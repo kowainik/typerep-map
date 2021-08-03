@@ -3,9 +3,22 @@
 `typerep-map` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
-## 0.3.3.1 — Aug 2, 2021
+## 0.4.0.0 — Aug 3, 2021
 
-* Support GHC-9.0.
+* [#109](https://github.com/kowainik/typerep-map/issues/109):
+  Support GHC-9.0.
+* [#30](https://github.com/kowainik/typerep-map/issues/30):
+  Remove `containers` from dependencies.
+* [#94](https://github.com/kowainik/typerep-map/issues/94),
+  [#99](https://github.com/kowainik/typerep-map/issues/99),
+  [#100](https://github.com/kowainik/typerep-map/issues/100):
+  Improve performance of `insert` and `delete`.
+* [#95](https://github.com/kowainik/typerep-map/issues/95):
+  Add `alter`.
+* [#96](https://github.com/kowainik/typerep-map/issues/96):
+  Add `intersection` and `intersectionWith`.
+* [#105](https://github.com/kowainik/typerep-map/issues/105):
+  Add `keysWith` and `toListWith`.
 
 ## 0.3.3.0 — Apr 18, 2020
 

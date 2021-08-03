@@ -20,9 +20,12 @@
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
 {- |
-Copyright:  (c) 2017-2020 Kowainik
-SPDX-License-Identifier: MPL-2.0
-Maintainer: Kowainik <xrom.xkov@gmail.com>
+Module                  : Data.TypeRepMap.Internal
+Copyright               : (c) 2017-2021 Kowainik
+SPDX-License-Identifier : MPL-2.0
+Maintainer              : Kowainik <xrom.xkov@gmail.com>
+Stability               : Stable
+Portability             : Portable
 
 Internal API for 'TypeRepMap' and operations on it. The functions here do
 not have any stability guarantees and can change between minor versions.
