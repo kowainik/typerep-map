@@ -9,6 +9,7 @@
 {-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE Rank2Types            #-}
+{-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeInType            #-}
 {-# LANGUAGE ViewPatterns          #-}
@@ -87,6 +88,7 @@ The runtime representation of 'TypeRepMap' is an array, not a tree. This makes
 'lookup' significantly more efficient.
 
 -}
+type role TypeRepMap representational
 data TypeRepMap (f :: k -> Type) =
   TypeRepMap
     { fingerprintAs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ first components of key fingerprints
