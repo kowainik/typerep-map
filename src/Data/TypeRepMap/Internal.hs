@@ -10,6 +10,7 @@
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE Rank2Types            #-}
 {-# LANGUAGE RoleAnnotations       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeInType            #-}
 {-# LANGUAGE ViewPatterns          #-}
@@ -98,10 +99,13 @@ data TypeRepMap (f :: k -> Type) =
   TypeRepMap
     { fingerprintAs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ first components of key fingerprints
     , fingerprintBs :: {-# UNPACK #-} !(PrimArray Word64) -- ^ second components of key fingerprints
-    , trAnys        :: {-# UNPACK #-} !(Array Any)        -- ^ values stored in the map
-    , trKeys        :: {-# UNPACK #-} !(Array Any)        -- ^ typerep keys
+    , trAnys        :: {-# UNPACK #-} !(Array (AnyValue f))    -- ^ values stored in the map
+    , trKeys        :: {-# UNPACK #-} !(Array (AnyTypeRep k))  -- ^ typerep keys
     }
   -- ^ an unsafe constructor for 'TypeRepMap'
+
+newtype AnyTypeRep k = AnyTypeRep (TypeRep (Any :: k))
+newtype AnyValue (f :: k -> Type) = AnyValue (f Any)
 
 instance NFData (TypeRepMap f) where
    rnf x = rnf (keys x) `seq` ()
@@ -126,7 +130,7 @@ instance Monoid (TypeRepMap f) where
     {-# INLINE mappend #-}
 
 #if __GLASGOW_HASKELL__ >= 806
-instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
+instance forall k (f :: k -> Type). (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
     tm1 == tm2 = size tm1 == size tm2 && go 0
       where
         go :: Int -> Bool
@@ -136,13 +140,13 @@ instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
                   Nothing   -> False
                   Just Refl -> repEq tr1i (fromAny tv1i) (fromAny tv2i) && go (i + 1)
           where
-            tr1i :: TypeRep x
+            tr1i :: TypeRep (x :: k)
             tr1i = anyToTypeRep $ indexArray (trKeys tm1) i
 
-            tr2i :: TypeRep y
+            tr2i :: TypeRep (y :: k)
             tr2i = anyToTypeRep $ indexArray (trKeys tm2) i
 
-            tv1i, tv2i :: Any
+            tv1i, tv2i :: AnyValue f
             tv1i = indexArray (trAnys tm1) i
             tv2i = indexArray (trAnys tm2) i
 
@@ -181,7 +185,7 @@ one x = TypeRepMap (primArrayFromListN 1 [fa])
                    (pure @Array v)
                    (pure @Array k)
   where
-    (Fingerprint fa fb, v, k) = (calcFp @a, toAny x, unsafeCoerce $ typeRep @a)
+    (Fingerprint fa fb, v, k) = (calcFp @a, toAny x, typeRepToAny $ typeRep @a)
 {-# INLINE one #-}
 
 {- |
@@ -200,7 +204,7 @@ insert x m
       Nothing -> union m $ one x
       Just i  -> m {trAnys = changeAnyArr i (trAnys m)}
   where
-    changeAnyArr :: Int -> Array Any -> Array Any
+    changeAnyArr :: Int -> Array (AnyValue f) -> Array (AnyValue f)
     changeAnyArr i trAs = runST $ do
       let n = sizeofArray trAs
       mutArr <- thawArray trAs 0 n
@@ -278,7 +282,7 @@ alter fun tr = case cachedBinarySearch (typeFp @a) (fingerprintAs tr) (fingerpri
             Nothing -> delete @a tr
             Just v  -> tr{trAnys = replaceAnyAt i (toAny v) (trAnys tr)}
   where
-    replaceAnyAt :: Int -> Any -> Array Any -> Array Any
+    replaceAnyAt :: Int -> AnyValue f -> Array (AnyValue f) -> Array (AnyValue f)
     replaceAnyAt i v trAs = runST $ do
         let n = sizeofArray trAs
         mutArr <- thawArray trAs 0 n
@@ -312,29 +316,29 @@ hoistWithKey :: forall f g. (forall x. Typeable x => f x -> g x) -> TypeRepMap f
 hoistWithKey f (TypeRepMap as bs ans ks) = TypeRepMap as bs newAns ks
   where
     newAns = mapArray' mapAns (mzip ans ks)
-    mapAns (a, k) = toAny $ withTr (unsafeCoerce k) $ fromAny a
+    mapAns (a, k) = toAny $ withTr (anyToTypeRep k) $ fromAny a
 
     withTr :: forall x. TypeRep x -> f x -> g x
     withTr t = withTypeable t f
 {-# INLINE hoistWithKey #-}
 
 -- | The union of two 'TypeRepMap's using a combining function for conflicting entries. @O(n + m)@
-unionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+unionWith :: forall k (f :: k -> Type). (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 unionWith f ma mb = do
     fromSortedTriples $ mergeMaps (toSortedTriples ma) (toSortedTriples mb)
   where
     f' :: forall x. TypeRep x -> f x -> f x -> f x
     f' tr = withTypeable tr f
 
-    combine :: (Fingerprint, Any, Any) -> (Fingerprint, Any, Any) -> (Fingerprint, Any, Any)
-    combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
+    combine :: (Fingerprint, AnyValue f, AnyTypeRep k) -> (Fingerprint, AnyValue f, AnyTypeRep k) -> (Fingerprint, AnyValue f, AnyTypeRep k)
+    combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (anyToTypeRep ak) (fromAny av) (fromAny bv), ak)
 
     -- Merges two typrepmaps into a sorted, dedup'd list of triples.
     -- Using 'toSortedTriples' allows us to assume the triples are sorted by fingerprint,
     -- Given O(n) performance from 'toSortedTriples', and given that we can merge-sort in
     -- O(n + m) time, then can '.fromSortedTriples' back into cachedBinarySearch order in O(n + m)
     -- that gives a total of O(n + m).
-    mergeMaps :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
+    mergeMaps :: [(Fingerprint, AnyValue f, AnyTypeRep k)] -> [(Fingerprint, AnyValue f, AnyTypeRep k)] -> [(Fingerprint, AnyValue f, AnyTypeRep k)]
     -- We've addressed all elements from both maps
     mergeMaps as [] = as
     mergeMaps [] bs = bs
@@ -362,18 +366,18 @@ union = unionWith const
 -- | The 'intersection' of two 'TypeRepMap's using a combining function
 --
 -- @O(n + m)@
-intersectionWith :: forall f. (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
+intersectionWith :: forall k (f :: k -> Type). (forall x. Typeable x => f x -> f x -> f x) -> TypeRepMap f -> TypeRepMap f -> TypeRepMap f
 intersectionWith f ma mb =
     fromSortedTriples $ mergeMaps (toSortedTriples ma) (toSortedTriples mb)
   where
     f' :: forall x. TypeRep x -> f x -> f x -> f x
     f' tr = withTypeable tr f
 
-    combine :: (Fingerprint, Any, Any) -> (Fingerprint, Any, Any) -> (Fingerprint, Any, Any)
-    combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (fromAny ak) (fromAny av) (fromAny bv), ak)
+    combine :: (Fingerprint, AnyValue f, AnyTypeRep k) -> (Fingerprint, AnyValue f, AnyTypeRep k) -> (Fingerprint, AnyValue f, AnyTypeRep k)
+    combine (fp, av, ak) (_, bv, _) = (fp, toAny $ f' (anyToTypeRep ak) (fromAny av) (fromAny bv), ak)
 
     -- Merges two typrepmaps into a sorted, dedup'd list of triples.
-    mergeMaps :: [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)] -> [(Fingerprint, Any, Any)]
+    mergeMaps :: [(Fingerprint, AnyValue f, AnyTypeRep k)] -> [(Fingerprint, AnyValue f, AnyTypeRep k)] -> [(Fingerprint, AnyValue f, AnyTypeRep k)]
     -- If either list is empty, the intersection must be finished.
     mergeMaps _ [] = []
     mergeMaps [] _ = []
@@ -450,7 +454,7 @@ toListWith f = map toF . toTriples
   where
     withTypeRep :: TypeRep a -> f a -> r
     withTypeRep tr an = withTypeable tr $ f an
-    toF (_, an, k) = withTypeRep (unsafeCoerce k) (fromAny an)
+    toF (_, an, k) = withTypeRep (anyToTypeRep k) (fromAny an)
 
 -- | Binary searched based on this article
 -- http://bannalia.blogspot.com/2015/06/cache-friendly-binary-search.html
@@ -479,20 +483,27 @@ cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
 -- Internal functions
 ----------------------------------------------------------------------------
 
-toAny :: f a -> Any
-toAny = unsafeCoerce
+toAny :: forall k (f :: k -> Type) (a :: k). f a -> AnyValue f
+toAny x = AnyValue (unsafeCoerce x)
+{-# INLINE toAny #-}
 
-fromAny :: Any -> f a
-fromAny = unsafeCoerce
+fromAny :: AnyValue f -> f a
+fromAny (AnyValue x) = unsafeCoerce x
+{-# INLINE fromAny #-}
 
-anyToTypeRep :: Any -> TypeRep f
-anyToTypeRep = unsafeCoerce
+anyToTypeRep :: forall k (a :: k). AnyTypeRep k -> TypeRep a
+anyToTypeRep (AnyTypeRep x) = unsafeCoerce x
+{-# INLINE anyToTypeRep #-}
+
+typeRepToAny :: forall k (a :: k). TypeRep a -> AnyTypeRep k
+typeRepToAny x = AnyTypeRep (unsafeCoerce x)
+{-# INLINE typeRepToAny #-}
 
 typeFp :: forall a . Typeable a => Fingerprint
 typeFp = typeRepFingerprint $ typeRep @a
 {-# INLINE typeFp #-}
 
-toTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
+toTriples :: forall k (f :: k -> Type). TypeRepMap f -> [(Fingerprint, AnyValue f, AnyTypeRep k)]
 toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ trAnys tm) (GHC.toList $ trKeys tm)
 
 -- | Efficiently get sorted triples from a map in O(n) time
@@ -501,7 +512,7 @@ toTriples tm = zip3 (toFingerprints tm) (GHC.toList $ trAnys tm) (GHC.toList $ t
 -- Then we can construct the index mapping from the "cached" ordering into monotonically
 -- increasing order using 'generateOrderMapping' with the length of the TRM. This takes @O(n).
 -- We then pull those indexes from the source TRM to get the sorted triples in a total of @O(n).
-toSortedTriples :: TypeRepMap f -> [(Fingerprint, Any, Any)]
+toSortedTriples :: forall k (f :: k -> Type). TypeRepMap f -> [(Fingerprint, AnyValue f, AnyTypeRep k)]
 toSortedTriples tm = trip <$> ordering
   where
     trip i = ( Fingerprint (indexPrimArray (fingerprintAs tm) i) (indexPrimArray (fingerprintBs tm) i)
@@ -539,7 +550,7 @@ TypeRepMap [Bool, Char]
 
 
 -}
-instance IsList (TypeRepMap f) where
+instance IsList (TypeRepMap (f :: k -> Type)) where
     type Item (TypeRepMap f) = WrapTypeable f
 
     fromList :: [WrapTypeable f] -> TypeRepMap f
@@ -548,11 +559,11 @@ instance IsList (TypeRepMap f) where
         fp :: WrapTypeable f -> Fingerprint
         fp (WrapTypeable (_ :: f a)) = calcFp @a
 
-        an :: WrapTypeable f -> Any
+        an :: WrapTypeable f -> AnyValue f
         an (WrapTypeable x) = toAny x
 
-        k :: WrapTypeable f -> Any
-        k (WrapTypeable (_ :: f a)) = unsafeCoerce $ typeRep @a
+        k :: WrapTypeable f -> AnyTypeRep k
+        k (WrapTypeable (_ :: f a)) = typeRepToAny $ typeRep @a
 
     toList :: TypeRepMap f -> [WrapTypeable f]
     toList = toListWith WrapTypeable
@@ -560,10 +571,10 @@ instance IsList (TypeRepMap f) where
 calcFp :: forall a . Typeable a => Fingerprint
 calcFp = typeRepFingerprint $ typeRep @a
 
-fromTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
+fromTriples :: forall k (f :: k -> Type). [(Fingerprint, AnyValue f, AnyTypeRep k)] -> TypeRepMap f
 fromTriples = fromSortedTriples . sortWith fst3 . nubByFst
 
-fromSortedTriples :: [(Fingerprint, Any, Any)] -> TypeRepMap f
+fromSortedTriples :: forall k (f :: k -> Type). [(Fingerprint, AnyValue f, AnyTypeRep k)] -> TypeRepMap f
 fromSortedTriples kvs = TypeRepMap (GHC.fromList fpAs) (GHC.fromList fpBs) (GHC.fromList ans) (GHC.fromList ks)
   where
     (fpAs, fpBs) = unzip $ map (\(Fingerprint a b) -> (a, b)) fps
