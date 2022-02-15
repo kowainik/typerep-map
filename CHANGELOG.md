@@ -3,6 +3,13 @@
 `typerep-map` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.5.0.0 — Feb 15, 2022
+
+* [#117](https://github.com/kowainik/typerep-map/issues/117):
+  Support GHC-9.2
+* [#112](https://github.com/kowainik/typerep-map/issues/112):
+  Change `TypeRepMap` parameter role to `representational`.
+
 ## 0.4.0.0 — Aug 3, 2021
 
 * [#109](https://github.com/kowainik/typerep-map/issues/109):
