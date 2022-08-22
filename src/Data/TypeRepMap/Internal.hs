@@ -56,6 +56,9 @@ import Data.Primitive.PrimArray (MutablePrimArray, PrimArray, indexPrimArray, ne
 import Data.Semigroup (All (..), Semigroup (..))
 import Data.Type.Equality (TestEquality (..), (:~:) (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
+#if MIN_VERSION_base(4,17,0)
+import GHC.Base (word64ToWord#)
+#endif
 import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 #if WORD_SIZE_IN_BITS >= 64
@@ -459,17 +462,49 @@ cachedBinarySearch :: Fingerprint -> PrimArray Word64 -> PrimArray Word64 -> May
 cachedBinarySearch (Fingerprint (W64# a) (W64# b)) fpAs fpBs = inline (go 0#)
   where
     go :: Int# -> Maybe Int
+#if MIN_VERSION_base(4,17,0)
     go i = case i <# len of
         0# -> Nothing
-        _  -> let !(W64# valA) = indexPrimArray fpAs (I# i) in case a `ltWord#` valA of
-            0#  -> case a `eqWord#` valA of
-                0# -> go (2# *# i +# 2#)
-                _ -> let !(W64# valB) = indexPrimArray fpBs (I# i) in case b `eqWord#` valB of
-                    0# -> case b `ltWord#` valB of
-                        0# -> go (2# *# i +# 2#)
-                        _  -> go (2# *# i +# 1#)
-                    _ -> Just (I# i)
-            _ -> go (2# *# i +# 1#)
+        _  ->
+            let !(W64# (word64ToWord# -> valA)) = indexPrimArray fpAs (I# i)
+                !a' = word64ToWord# a
+                !b' = word64ToWord# b
+            in
+                case a' `ltWord#` valA of
+                    0#  ->
+                        case a' `eqWord#` valA of
+                            0# -> go (2# *# i +# 2#)
+                            _ ->
+                                let !(W64# valB) = indexPrimArray fpBs (I# i)
+                                in
+                                    case word64ToWord# b `eqWord#` word64ToWord# valB of
+                                        0# ->
+                                            case b' `ltWord#` word64ToWord# valB of
+                                                0# -> go (2# *# i +# 2#)
+                                                _  -> go (2# *# i +# 1#)
+                                        _ -> Just (I# i)
+                    _ -> go (2# *# i +# 1#)
+#else
+    go i = case i <# len of
+        0# -> Nothing
+        _  ->
+            let !(W64# valA) = indexPrimArray fpAs (I# i)
+            in
+                case a `ltWord#` valA of
+                    0#  ->
+                        case a `eqWord#` valA of
+                            0# -> go (2# *# i +# 2#)
+                            _ ->
+                                let !(W64# valB) = indexPrimArray fpBs (I# i)
+                                in
+                                    case b `eqWord#` valB of
+                                        0# ->
+                                            case b `ltWord#` valB of
+                                                0# -> go (2# *# i +# 2#)
+                                                _  -> go (2# *# i +# 1#)
+                                        _ -> Just (I# i)
+                    _ -> go (2# *# i +# 1#)
+#endif
 
     len :: Int#
     len = let !(I# l) = sizeofPrimArray fpAs in l
