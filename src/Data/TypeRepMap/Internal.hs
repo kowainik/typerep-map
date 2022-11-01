@@ -59,7 +59,13 @@ import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 import GHC.Exts (IsList (..), inline, sortWith)
 import GHC.Fingerprint (Fingerprint (..))
 #if WORD_SIZE_IN_BITS >= 64
+#if __GLASGOW_HASKELL__ >= 904
+import GHC.Prim (eqWord64#, ltWord64#)
+#define eqWord eqWord64
+#define ltWord ltWord64
+#else
 import GHC.Prim (eqWord#, ltWord#)
+#endif
 #else
 import GHC.IntWord64 (eqWord64#, ltWord64#)
 #define eqWord eqWord64
