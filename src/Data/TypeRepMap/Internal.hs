@@ -676,20 +676,20 @@ invariantCheck TypeRepMap{..} = getAll (check 0)
     sz = sizeofPrimArray fingerprintAs
     check i | i >= sz = All True
             | otherwise =
-      let left = i*2+1
-          right = i*2+2
+      let left = i * 2 + 1
+          right = i * 2 + 2
           -- maximum value in the left branch
           leftMax =
                fmap (\j -> (indexPrimArray fingerprintAs j, indexPrimArray fingerprintBs j))
              $ lastMay
-             $ takeWhile (<sz)
-             $ iterate (\j -> j*2+2) left
+             $ takeWhile (< sz)
+             $ iterate (\j -> j * 2 + 2) left
           -- minimum value in the right branch
           rightMin =
                fmap (\j -> (indexPrimArray fingerprintAs j, indexPrimArray fingerprintBs j))
              $ lastMay
-             $ takeWhile (<sz)
-             $ iterate (\j -> j*2+1) right
+             $ takeWhile (< sz)
+             $ iterate (\j -> j * 2 + 1) right
       in mconcat
           [ All $
             if left < sz
@@ -708,5 +708,5 @@ invariantCheck TypeRepMap{..} = getAll (check 0)
                 GT -> False
             else True
          , All $ fromMaybe True $ (<=) <$> leftMax <*> rightMin
-         , check (i+1)
+         , check (i + 1)
          ]
