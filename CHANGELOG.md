@@ -3,6 +3,14 @@
 `typerep-map` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.6.0.0 — Nov 2, 2022
+
+* [#125](https://github.com/kowainik/typerep-map/issues/125):
+  Support GHC-9.4.
+* Allow `vector-0.13`.
+* Allow `hedgehog-1.2` and `hspec-2.10`.
+* Allow `criterion-1.6`.
+
 ## 0.5.0.0 — Feb 15, 2022
 
 * [#117](https://github.com/kowainik/typerep-map/issues/117):
