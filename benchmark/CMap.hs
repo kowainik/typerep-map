@@ -59,7 +59,7 @@ inserts
     -> Proxy (a :: Nat)
     -> TypeRepMap (Proxy :: Nat -> Type)
 inserts !c 0 _ = c
-inserts !c n x = inserts
+inserts c n x = inserts
     (insert x c)
     (n - 1)
     (Proxy :: Proxy (a + 1))
