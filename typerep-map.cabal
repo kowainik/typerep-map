@@ -36,13 +36,14 @@ tested-with:         GHC == 8.2.2
                    , GHC == 9.0.2
                    , GHC == 9.2.4
                    , GHC == 9.4.2
+                   , GHC == 9.8.2
 
 source-repository head
   type:                git
   location:            https://github.com/kowainik/typerep-map.git
 
 common common-options
-  build-depends:       base >= 4.10 && < 4.18
+  build-depends:       base >= 4.10 && < 4.20
 
   default-language:    Haskell2010
   default-extensions:  BangPatterns
@@ -79,9 +80,9 @@ library
                        Data.TypeRepMap
                        Data.TypeRepMap.Internal
 
-  build-depends:       ghc-prim >= 0.5.1.1 && < 0.10
-                     , primitive ^>= 0.7.0
-                     , deepseq ^>= 1.4
+  build-depends:       ghc-prim >= 0.5.1.1 && < 0.12
+                     , primitive >= 0.7.0 && < 0.10
+                     , deepseq >= 1.4 && < 1.7
 
 library typerep-extra-impls
   import:              common-options
@@ -92,7 +93,7 @@ library typerep-extra-impls
 
   build-depends:       containers >= 0.5.10.2 && < 0.7
                      , vector >= 0.12.0.1 && < 0.14
-                     , deepseq ^>= 1.4
+                     , deepseq >= 1.4 && < 1.7
 
 test-suite typerep-map-test
   import:              common-options
@@ -106,10 +107,10 @@ test-suite typerep-map-test
                      , Test.TypeRep.Vector
                      , Test.TypeRep.VectorOpt
 
-  build-depends:       ghc-typelits-knownnat >= 0.4.2 && < 0.8
-                     , hedgehog >= 1.0 && < 1.3
-                     , hspec >= 2.7.1 && < 2.11
-                     , hspec-hedgehog ^>= 0.0.1
+  build-depends:       ghc-typelits-knownnat >= 0.4.2
+                     , hedgehog >= 1.0
+                     , hspec >= 2.7.1
+                     , hspec-hedgehog >= 0.0.1
                      , typerep-map
                      , typerep-extra-impls
 
@@ -128,11 +129,11 @@ benchmark typerep-map-benchmark
                      , Vector
                      , OptimalVector
 
-  build-depends:       criterion >= 1.4.1.0 && < 1.7
-                     , deepseq ^>= 1.4.3.0
-                     , dependent-map >= 0.2.4.0 && < 0.5
-                     , dependent-sum >= 0.5 && < 0.8
-                     , ghc-typelits-knownnat >= 0.4.2 && < 0.8
+  build-depends:       criterion >= 1.4.1.0
+                     , deepseq >= 1.4 && < 1.7
+                     , dependent-map >= 0.2.4.0
+                     , dependent-sum >= 0.5
+                     , ghc-typelits-knownnat >= 0.4.2
                      , typerep-map
                      , typerep-extra-impls
 
