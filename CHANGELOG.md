@@ -3,6 +3,11 @@
 `typerep-map` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.7.0.0 - Jan 14, 2026
+
+* Support newer GHC versions, update dependencies.
+* Remove suppor of GHC-8.2, GHC-8,4, GHC-8.6.
+
 ## 0.6.0.0 — Nov 2, 2022
 
 * [#125](https://github.com/kowainik/typerep-map/issues/125):

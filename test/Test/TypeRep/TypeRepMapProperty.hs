@@ -12,7 +12,6 @@ module Test.TypeRep.TypeRepMapProperty
 import Prelude hiding (lookup)
 
 import Data.Proxy (Proxy (..))
-import Data.Semigroup (Semigroup (..))
 import GHC.Exts (fromList)
 import GHC.TypeLits (Nat, SomeNat (..), someNatVal)
 import Hedgehog (MonadGen, assert, forAll, (===))
@@ -168,17 +167,3 @@ genTF = do
     case someNatVal randNat of
         Just (SomeNat proxyNat) -> pure $ WrapTypeable $ IntProxy proxyNat randInt
         Nothing                 -> error "Invalid test generator"
-
-----------------------------------------------------------------------------
--- Helpers
-----------------------------------------------------------------------------
-#if __GLASGOW_HASKELL__ < 806
-{- | We add an orphan Eq instance for old GHC versions just to make testing easier.
-It's not a good idea to write such 'Eq' instance for 'TypeRepMap' itself because
-it doesn't compare values so it's not true equality. But this should be enough
-for tests.
--}
-instance Eq (TypeRepMap f) where
-    TypeRepMap as1 bs1 _ _ == TypeRepMap as2 bs2 _ _ =
-        as1 == as2 && bs1 == bs2
-#endif

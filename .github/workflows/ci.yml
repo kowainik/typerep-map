@@ -17,18 +17,27 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        cabal: ["3.8"]
+        cabal: ["3.14"]
         ghc:
-          - "8.2.2"
-          - "8.4.4"
-          - "8.6.5"
           - "8.8.4"
           - "8.10.7"
           - "9.0.2"
           - "9.2.4"
-          - "9.4.2"
+          - "9.4.8"
+          - "9.6.7"
+          - "9.8.4"
+          - "9.10.1"
+          - "9.12.2"
         exclude:
           - os: macOS-latest
+            ghc: 9.10.1
+          - os: macOS-latest
+            ghc: 9.8.4
+          - os: macOS-latest
+            ghc: 9.6.7
+          - os: macOS-latest
+            ghc: 9.4.8
+          - os: macOS-latest
             ghc: 9.2.4
           - os: macOS-latest
             ghc: 9.0.2
@@ -36,14 +45,16 @@ jobs:
             ghc: 8.10.7
           - os: macOS-latest
             ghc: 8.8.4
-          - os: macOS-latest
-            ghc: 8.6.5
-          - os: macOS-latest
-            ghc: 8.4.4
-          - os: macOS-latest
-            ghc: 8.2.2
 
           - os: windows-latest
+            ghc: 9.10.1
+          - os: windows-latest
+            ghc: 9.8.4
+          - os: windows-latest
+            ghc: 9.6.7
+          - os: windows-latest
+            ghc: 9.4.8
+          - os: windows-latest
             ghc: 9.2.4
           - os: windows-latest
             ghc: 9.0.2
@@ -51,17 +62,11 @@ jobs:
             ghc: 8.10.7
           - os: windows-latest
             ghc: 8.8.4
-          - os: windows-latest
-            ghc: 8.6.5
-          - os: windows-latest
-            ghc: 8.4.4
-          - os: windows-latest
-            ghc: 8.2.2
 
     steps:
     - uses: actions/checkout@v4
 
-    - uses: haskell/actions/setup@v2
+    - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
       with:
@@ -76,7 +81,7 @@ jobs:
       run: |
         cabal freeze
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache ~/.cabal/store
       with:
         path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}

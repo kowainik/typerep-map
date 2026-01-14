@@ -10,9 +10,7 @@ import Spec (BenchSpec (..))
 
 import qualified CacheMap
 import qualified CMap
-#if ( __GLASGOW_HASKELL__ >= 802 )
 import qualified DMap
-#endif
 import qualified OptimalVector as OptVec
 
 
@@ -20,9 +18,7 @@ main :: IO ()
 main = do
     let specs = [("CMap", CMap.spec)
                 ,("CacheMap", CacheMap.spec)
-#if ( __GLASGOW_HASKELL__ >= 802 )
                 , ("DMap", DMap.spec)
-#endif
                 , ("OptVec", OptVec.spec)
                 ]
     {- This code creates a benchmark group. Given a getter

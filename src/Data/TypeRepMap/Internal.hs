@@ -11,18 +11,17 @@
 {-# LANGUAGE Rank2Types            #-}
 {-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE TypeFamilies          #-}
+#if __GLASGOW_HASKELL__ <= 906
 {-# LANGUAGE TypeInType            #-}
-{-# LANGUAGE ViewPatterns          #-}
-
-#if __GLASGOW_HASKELL__ >= 806
-{-# LANGUAGE QuantifiedConstraints #-}
 #endif
+{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
 {- |
 Module                  : Data.TypeRepMap.Internal
-Copyright               : (c) 2017-2022 Kowainik
+Copyright               : (c) 2017-2026 Kowainik
 SPDX-License-Identifier : MPL-2.0
 Maintainer              : Kowainik <xrom.xkov@gmail.com>
 Stability               : Stable
@@ -53,7 +52,7 @@ import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', sizeofA
 import Data.Primitive.PrimArray (MutablePrimArray, PrimArray, indexPrimArray, newPrimArray,
                                  primArrayFromListN, primArrayToList, sizeofPrimArray,
                                  unsafeFreezePrimArray, writePrimArray)
-import Data.Semigroup (All (..), Semigroup (..))
+import Data.Semigroup (All (..))
 import Data.Type.Equality (TestEquality (..), (:~:) (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 #if MIN_VERSION_base(4,17,0)
@@ -128,7 +127,6 @@ instance Monoid (TypeRepMap f) where
     {-# INLINE mempty #-}
     {-# INLINE mappend #-}
 
-#if __GLASGOW_HASKELL__ >= 806
 instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
     tm1 == tm2 = size tm1 == size tm2 && go 0
       where
@@ -151,7 +149,6 @@ instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
 
             repEq :: TypeRep x -> f x -> f x -> Bool
             repEq tr = withTypeable tr (==)
-#endif
 
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFingerprints :: TypeRepMap f -> [Fingerprint]
