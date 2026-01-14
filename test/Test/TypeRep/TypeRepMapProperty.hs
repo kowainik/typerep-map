@@ -12,7 +12,6 @@ module Test.TypeRep.TypeRepMapProperty
 import Prelude hiding (lookup)
 
 import Data.Proxy (Proxy (..))
-import Data.Semigroup (Semigroup (..))
 import GHC.Exts (fromList)
 import GHC.TypeLits (Nat, SomeNat (..), someNatVal)
 import Hedgehog (MonadGen, assert, forAll, (===))

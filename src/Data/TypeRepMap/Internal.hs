@@ -11,7 +11,9 @@
 {-# LANGUAGE Rank2Types            #-}
 {-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE TypeFamilies          #-}
+#if __GLASGOW_HASKELL__ <= 906
 {-# LANGUAGE TypeInType            #-}
+#endif
 {-# LANGUAGE ViewPatterns          #-}
 
 #if __GLASGOW_HASKELL__ >= 806
@@ -22,7 +24,7 @@
 
 {- |
 Module                  : Data.TypeRepMap.Internal
-Copyright               : (c) 2017-2022 Kowainik
+Copyright               : (c) 2017-2026 Kowainik
 SPDX-License-Identifier : MPL-2.0
 Maintainer              : Kowainik <xrom.xkov@gmail.com>
 Stability               : Stable
@@ -53,7 +55,7 @@ import Data.Primitive.Array (Array, MutableArray, indexArray, mapArray', sizeofA
 import Data.Primitive.PrimArray (MutablePrimArray, PrimArray, indexPrimArray, newPrimArray,
                                  primArrayFromListN, primArrayToList, sizeofPrimArray,
                                  unsafeFreezePrimArray, writePrimArray)
-import Data.Semigroup (All (..), Semigroup (..))
+import Data.Semigroup (All (..))
 import Data.Type.Equality (TestEquality (..), (:~:) (..))
 import GHC.Base (Any, Int (..), Int#, (*#), (+#), (<#))
 #if MIN_VERSION_base(4,17,0)

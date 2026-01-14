@@ -128,8 +128,8 @@ instance G.Vector Unboxed.Vector Fingerprint where
         G.basicUnsafeCopy bs1 bs2
     {-# INLINE elemseq  #-}
     elemseq _ (Fingerprint a b)
-        = G.elemseq (undefined :: Unboxed.Vector a) a
-        . G.elemseq (undefined :: Unboxed.Vector b) b
+        = G.elemseq (undefined :: Unboxed.Vector a') a
+        . G.elemseq (undefined :: Unboxed.Vector b') b
 
 data TypeRepVector f = TypeRepVect
     { fingerprints :: Unboxed.Vector Fingerprint
