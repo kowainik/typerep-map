@@ -15,10 +15,7 @@
 {-# LANGUAGE TypeInType            #-}
 #endif
 {-# LANGUAGE ViewPatterns          #-}
-
-#if __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE QuantifiedConstraints #-}
-#endif
 
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes #-}
 
@@ -130,7 +127,6 @@ instance Monoid (TypeRepMap f) where
     {-# INLINE mempty #-}
     {-# INLINE mappend #-}
 
-#if __GLASGOW_HASKELL__ >= 806
 instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
     tm1 == tm2 = size tm1 == size tm2 && go 0
       where
@@ -153,7 +149,6 @@ instance (forall a. Typeable a => Eq (f a)) => Eq (TypeRepMap f) where
 
             repEq :: TypeRep x -> f x -> f x -> Bool
             repEq tr = withTypeable tr (==)
-#endif
 
 -- | Returns the list of 'Fingerprint's from 'TypeRepMap'.
 toFingerprints :: TypeRepMap f -> [Fingerprint]
